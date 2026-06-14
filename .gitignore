@@ -1,0 +1,9 @@
+node_modules/
+.next/
+out/
+data/notes/
+graphify-out/
+.env.local
+coverage/
+test-results/
+playwright-report/
