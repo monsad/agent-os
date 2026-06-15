@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "db:init": "node --experimental-strip-types scripts/init-db.ts"
   },
   "dependencies": {
     "next": "15.3.0",
