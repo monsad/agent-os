@@ -22,4 +22,8 @@ describe("appendTurn", () => {
     const text = await readFile(path.join(dir, "evil-id.md"), "utf-8");
     expect(text).toContain("**user:** x");
   });
+
+  it("throws when the conversation id reduces to an empty safe name", async () => {
+    await expect(appendTurn(dir, "../", "user", "x")).rejects.toThrow(/empty safe name/);
+  });
 });

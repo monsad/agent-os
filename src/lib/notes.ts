@@ -2,7 +2,9 @@ import { mkdir, appendFile } from "node:fs/promises";
 import path from "node:path";
 
 function safeId(id: string): string {
-  return id.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  const safe = id.replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  if (!safe) throw new Error(`conversationId "${id}" produced an empty safe name`);
+  return safe;
 }
 
 export async function appendTurn(

@@ -34,4 +34,16 @@ describe("streamChat", () => {
     const gen = streamChat([{ role: "user", content: "hi" }]);
     await expect(gen.next()).rejects.toThrow(/Ollama/);
   });
+
+  it("flushes a trailing delta when the stream closes without [DONE]", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      sseResponse([
+        'data: {"choices":[{"delta":{"content":"He"}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"llo"}}]}', // no trailing newline, no [DONE]
+      ]),
+    ));
+    const out: string[] = [];
+    for await (const tok of streamChat([{ role: "user", content: "hi" }])) out.push(tok);
+    expect(out.join("")).toBe("Hello");
+  });
 });
