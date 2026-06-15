@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { createStore } from "./ghost";
 
 function fakePool(rows: unknown[] = []) {
-  return { query: vi.fn(async () => ({ rows })) };
+  return { query: vi.fn(async (..._args: unknown[]) => ({ rows })) };
 }
 
 describe("ghost store", () => {
