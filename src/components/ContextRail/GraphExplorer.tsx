@@ -1,9 +1,12 @@
 "use client";
 import { useState, type FormEvent } from "react";
 
+type Hit = { conversation_id: string; content: string };
+
 export function GraphExplorer() {
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
+  const [hits, setHits] = useState<Hit[]>([]);
   const [busy, setBusy] = useState(false);
 
   async function onQuery(e: FormEvent) {
@@ -18,6 +21,7 @@ export function GraphExplorer() {
       });
       const json = await res.json();
       setAnswer(json.graph ?? "(no graph yet — rebuild first)");
+      setHits(Array.isArray(json.messages) ? json.messages : []);
     } finally {
       setBusy(false);
     }
@@ -40,7 +44,12 @@ export function GraphExplorer() {
           Rebuild
         </button>
       </div>
-      <iframe title="graph" src="/api/graph/html" className="h-40 w-full rounded border border-neutral-800 bg-white" />
+      <iframe
+        title="graph"
+        src="/api/graph/html"
+        sandbox="allow-scripts"
+        className="h-40 w-full rounded border border-neutral-800 bg-white"
+      />
       <form data-testid="graph-query" onSubmit={onQuery}>
         <input
           value={q}
@@ -50,6 +59,15 @@ export function GraphExplorer() {
         />
       </form>
       {answer && <pre className="whitespace-pre-wrap rounded bg-neutral-900 p-2 text-xs">{answer}</pre>}
+      {hits.length > 0 && (
+        <ul className="space-y-1">
+          {hits.map((h, i) => (
+            <li key={i} className="rounded bg-neutral-900 p-2 text-xs text-neutral-400">
+              {h.content}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

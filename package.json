@@ -13,14 +13,14 @@
   },
   "dependencies": {
     "next": "15.3.0",
+    "pg": "8.13.1",
     "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "pg": "8.13.1"
+    "react-dom": "19.0.0"
   },
   "devDependencies": {
     "@playwright/test": "1.49.0",
-    "@testing-library/react": "16.1.0",
     "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.1.0",
     "@types/node": "22.10.0",
     "@types/pg": "8.11.10",
     "@types/react": "19.0.0",

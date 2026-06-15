@@ -29,4 +29,14 @@ describe("ChatWorkspace", () => {
     fireEvent.submit(screen.getByTestId("composer"));
     expect(send).toHaveBeenCalledWith("yo");
   });
+
+  it("disables the composer while streaming", () => {
+    vi.spyOn(hook, "useChat").mockReturnValue({
+      messages: [],
+      send: vi.fn(),
+      status: "streaming",
+    } as unknown as ReturnType<typeof hook.useChat>);
+    render(<ChatWorkspace conversationId="c1" />);
+    expect(screen.getByPlaceholderText(/message/i)).toBeDisabled();
+  });
 });

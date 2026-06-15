@@ -35,7 +35,8 @@ export function ChatWorkspace({ conversationId }: { conversationId: string }) {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Message the local model…"
-          className="w-full rounded-md bg-neutral-900 px-3 py-2 text-sm outline-none"
+          disabled={status === "streaming"}
+          className="w-full rounded-md bg-neutral-900 px-3 py-2 text-sm outline-none disabled:opacity-50"
         />
       </form>
     </section>
