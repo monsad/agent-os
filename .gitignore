@@ -7,3 +7,6 @@ graphify-out/
 coverage/
 test-results/
 playwright-report/
+
+# build artifacts
+*.tsbuildinfo
