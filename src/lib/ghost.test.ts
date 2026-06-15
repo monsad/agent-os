@@ -24,6 +24,15 @@ describe("ghost store", () => {
     expect(params).toEqual(["conv1", "user", "hi"]);
   });
 
+  it("searchMessages passes the ILIKE term as a bound parameter, not interpolated SQL", async () => {
+    const pool = fakePool([]);
+    const store = createStore(pool as never);
+    await store.searchMessages("o'brien");
+    const [sql, params] = pool.query.mock.calls.at(-1)!;
+    expect(String(sql)).not.toContain("o'brien");
+    expect(params).toEqual(["%o'brien%", 20]);
+  });
+
   it("isAvailable returns false when the pool throws", async () => {
     const pool = { query: vi.fn(async () => { throw new Error("down"); }) };
     const store = createStore(pool as never);
