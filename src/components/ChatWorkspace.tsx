@@ -18,7 +18,7 @@ export function ChatWorkspace({ conversationId }: { conversationId: string }) {
     <section className="flex h-full flex-col">
       {status === "offline" && (
         <div className="bg-amber-900/40 px-4 py-2 text-sm text-amber-200">
-          Local model offline — run <code>ollama serve</code> (model <code>gpt-oss:20b</code>).
+          Local model offline — run <code>ollama serve</code> (model <code>qwen2.5:14b</code>).
         </div>
       )}
       <div className="flex-1 space-y-3 overflow-y-auto p-4">

@@ -4,4 +4,17 @@
 
 :root { color-scheme: dark; }
 html, body { height: 100%; }
-body { @apply bg-neutral-950 text-neutral-100; }
+body {
+  @apply text-neutral-300;
+  background:
+    radial-gradient(1100px 560px at 82% -12%, rgba(99, 102, 241, 0.10), transparent 60%),
+    radial-gradient(820px 520px at -6% 112%, rgba(236, 72, 153, 0.07), transparent 55%),
+    #09090b;
+}
+
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.eyebrow { @apply text-[10px] font-medium uppercase tracking-[0.2em] text-neutral-500; }
+.panel { background: rgba(255, 255, 255, 0.022); border: 1px solid rgba(255, 255, 255, 0.06); }
+.panel-hover { transition: background .15s, border-color .15s; }
+.panel-hover:hover { background: rgba(255, 255, 255, 0.045); border-color: rgba(255, 255, 255, 0.12); }
+.dot-glow { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04); }

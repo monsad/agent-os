@@ -1,19 +1,66 @@
 "use client";
 import { useState } from "react";
-import { AgentRail, type Agent } from "./AgentRail";
+import { Sidebar } from "./Sidebar";
+import { StatusStrip } from "./StatusStrip";
+import { AgentCard } from "./AgentCard";
 import { AgentControlRoom } from "./AgentControlRoom";
-import { ChatWorkspace } from "./ChatWorkspace";
 import { ContextRail } from "./ContextRail/ContextRail";
-
-const CONVERSATION_ID = "default";
+import { AGENTS, type Agent } from "./agents";
 
 export function MissionControlLayout() {
   const [selected, setSelected] = useState<Agent | null>(null);
+  const [view, setView] = useState("mission-control");
+
   return (
-    <div className="grid h-screen grid-cols-[220px_1fr_320px]">
-      <AgentRail onSelect={setSelected} />
-      <ChatWorkspace conversationId={CONVERSATION_ID} />
-      <ContextRail />
+    <div className="flex h-screen">
+      <Sidebar active={view} onWorkspace={setView} onSelectAgent={setSelected} />
+
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-[1100px] px-8 py-8">
+          <header className="mb-8 flex items-start justify-between">
+            <div>
+              <p className="eyebrow mb-3 flex items-center gap-2">
+                <span className="text-neutral-600">I</span> — Mission Control
+              </p>
+              <h1 className="text-4xl font-semibold tracking-tight text-neutral-50">Mission Control</h1>
+              <p className="mt-2 text-sm text-neutral-400">Status of every agent, every memory, every signal.</p>
+              <p className="mono mt-2 text-[11px] text-neutral-600">local · studio</p>
+            </div>
+            <div className="flex gap-2">
+              <button className="panel panel-hover rounded-lg px-3 py-1.5 text-[12px] text-neutral-300">⌘K Command palette</button>
+              <button className="panel panel-hover rounded-lg px-3 py-1.5 text-[12px] text-neutral-300">▥ All systems</button>
+            </div>
+          </header>
+
+          {view === "mission-control" && (
+            <>
+              <StatusStrip />
+
+              <div className="my-9 flex items-center gap-3">
+                <span className="h-px flex-1 bg-white/[0.06]" />
+                <span className="text-neutral-600">✦</span>
+                <span className="h-px flex-1 bg-white/[0.06]" />
+              </div>
+
+              <p className="eyebrow mb-4 flex items-center gap-2">
+                <span className="text-neutral-600">II</span> — Agents · click to open control room
+              </p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {AGENTS.map((a) => (
+                  <AgentCard key={a.id} agent={a} onOpen={setSelected} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {(view === "memory" || view === "graph") && (
+            <div className="panel rounded-2xl p-5">
+              <ContextRail />
+            </div>
+          )}
+        </div>
+      </main>
+
       {selected && <AgentControlRoom agent={selected} onClose={() => setSelected(null)} />}
     </div>
   );
