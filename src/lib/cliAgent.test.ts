@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { EventEmitter } from "node:events";
-import { runClaude, runCliAgent, buildPrompt, extractCodexAnswer } from "./cliAgent";
+import { runClaude, runCliAgent, buildPrompt, extractCodexAnswer, extractOpencodeAnswer, runOpencode, runGemini } from "./cliAgent";
 
 function fakeSpawn(stdout: string, code = 0) {
   return vi.fn(() => {
@@ -52,6 +52,35 @@ describe("runClaude", () => {
   it("rejects on a non-zero exit", async () => {
     const spawn = fakeSpawn("boom", 1);
     await expect(runClaude([{ role: "user", content: "hi" }], spawn as never)).rejects.toThrow(/claude/);
+  });
+});
+
+describe("extractOpencodeAnswer", () => {
+  it("strips the build banner, urls, and ANSI codes", () => {
+    const raw = [
+      "  https://github.com/oven-sh/bun/releases/download/bun.zip",
+      "> build · big-pickle",
+      "\x1b[0mHello there\x1b[0m",
+    ].join("\n");
+    expect(extractOpencodeAnswer(raw)).toBe("Hello there");
+  });
+});
+
+describe("runOpencode", () => {
+  it("invokes `opencode run` with the flattened prompt", async () => {
+    const spawn = fakeSpawn("> build · x\nready\n");
+    const out = await runOpencode([{ role: "user", content: "hi" }], spawn as never);
+    expect(out).toBe("ready");
+    expect(spawn).toHaveBeenCalledWith("opencode", ["run", "user: hi\nassistant:"], expect.anything());
+  });
+});
+
+describe("runGemini", () => {
+  it("invokes `gemini -p` with the flattened prompt", async () => {
+    const spawn = fakeSpawn("answer\n");
+    const out = await runGemini([{ role: "user", content: "hi" }], spawn as never);
+    expect(out).toBe("answer");
+    expect(spawn).toHaveBeenCalledWith("gemini", ["-p", "user: hi\nassistant:"], expect.anything());
   });
 });
 

@@ -1,6 +1,6 @@
 export type AgentStatus = "online" | "offline" | "data";
 
-export type Backend = "ollama" | "claude" | "codex";
+export type Backend = "ollama" | "claude" | "codex" | "opencode" | "gemini";
 
 export type Agent = {
   id: string;
@@ -11,6 +11,7 @@ export type Agent = {
   accent: string; // tailwind gradient stops, e.g. "from-emerald-400 to-teal-500"
   live?: boolean; // backed by a real backend
   backend?: Backend; // which backend powers chat
+  model?: string; // ollama model override (when backend === "ollama")
 };
 
 export const AGENTS: Agent[] = [
@@ -56,35 +57,42 @@ export const AGENTS: Agent[] = [
   {
     id: "openclaw",
     name: "OpenClaw",
-    status: "offline",
-    tagline: "Local agent gateway. Routes tasks between agents.",
+    status: "online",
+    tagline: "Local agent gateway via opencode — runs tasks through your local setup.",
     meta: [
-      { label: "Agents", value: "0" },
-      { label: "Sessions", value: "0" },
+      { label: "CLI", value: "opencode run" },
+      { label: "Mode", value: "local" },
     ],
     accent: "from-pink-400 to-rose-500",
+    live: true,
+    backend: "opencode",
   },
   {
     id: "hermes",
     name: "Hermes",
-    status: "offline",
-    tagline: "Research agent. Tool calls, kanban, skills, plugins.",
+    status: "online",
+    tagline: "Nous Research agent — Hermes 3 running locally on Ollama.",
     meta: [
-      { label: "Model", value: "stub" },
-      { label: "Provider", value: "—" },
+      { label: "Model", value: "hermes3:8b" },
+      { label: "Provider", value: "Ollama" },
     ],
     accent: "from-sky-400 to-blue-500",
+    live: true,
+    backend: "ollama",
+    model: "hermes3:8b",
   },
   {
     id: "gemini",
     name: "Gemini",
-    status: "offline",
-    tagline: "Google multimodal agent. Vision + long context.",
+    status: "online",
+    tagline: "Google Gemini on your account — log in once with `gemini`, no API key.",
     meta: [
-      { label: "Model", value: "stub" },
-      { label: "Provider", value: "—" },
+      { label: "Auth", value: "Google login" },
+      { label: "CLI", value: "gemini -p" },
     ],
     accent: "from-fuchsia-400 to-pink-500",
+    live: true,
+    backend: "gemini",
   },
 ];
 

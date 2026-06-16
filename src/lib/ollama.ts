@@ -4,9 +4,10 @@ export type ChatMessage = { role: "system" | "user" | "assistant"; content: stri
 
 export async function* streamChat(
   messages: ChatMessage[],
+  modelOverride?: string,
 ): AsyncGenerator<string, void, unknown> {
   const base = getEnv("OLLAMA_BASE_URL", "http://localhost:11434/v1");
-  const model = getEnv("OLLAMA_MODEL", "gpt-oss:20b");
+  const model = modelOverride ?? getEnv("OLLAMA_MODEL", "gpt-oss:20b");
 
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",

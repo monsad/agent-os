@@ -5,11 +5,13 @@ import { useChat } from "./hooks/useChat";
 export function ChatWorkspace({
   conversationId,
   backend,
+  model,
 }: {
   conversationId: string;
   backend?: string;
+  model?: string;
 }) {
-  const { messages, send, status } = useChat(conversationId, backend);
+  const { messages, send, status } = useChat(conversationId, backend, model);
   const [draft, setDraft] = useState("");
 
   const offlineHint =
@@ -17,7 +19,11 @@ export function ChatWorkspace({
       ? "Claude CLI unavailable — check `claude` is installed and logged in."
       : backend === "codex"
         ? "Codex CLI unavailable — check `codex` is installed and logged in."
-        : "Local model offline — run `ollama serve` (model `qwen2.5:14b`).";
+        : backend === "opencode"
+          ? "OpenClaw unavailable — check `opencode` is installed and configured."
+          : backend === "gemini"
+            ? "Gemini not logged in — run `gemini` once and sign in with Google."
+            : "Local model offline — run `ollama serve` (model `qwen2.5:14b`).";
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();

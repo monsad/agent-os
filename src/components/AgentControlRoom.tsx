@@ -47,7 +47,7 @@ export function AgentControlRoom({ agent, onClose }: { agent: Agent; onClose: ()
         <div className="min-h-0 flex-1 overflow-y-auto">
           {tab === "Chat" &&
             (agent.live ? (
-              <ChatWorkspace conversationId={`agent:${agent.id}`} backend={agent.backend} />
+              <ChatWorkspace conversationId={`agent:${agent.id}`} backend={agent.backend} model={agent.model} />
             ) : (
               <Placeholder text={`${agent.name} is a stub. Wire a backend to enable chat (etap 2).`} />
             ))}

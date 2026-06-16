@@ -4,7 +4,7 @@ import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
 type Backend = "ollama" | CliBackend;
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { messages?: ChatMessage[]; backend?: Backend };
+  let body: { messages?: ChatMessage[]; backend?: Backend; model?: string };
   try {
     body = await request.json();
   } catch {
@@ -16,8 +16,8 @@ export async function POST(request: Request): Promise<Response> {
 
   const backend: Backend = body.backend ?? "ollama";
 
-  // Subscription-backed CLI agents: run the local CLI, return the full answer.
-  if (backend === "claude" || backend === "codex") {
+  // Subscription / local CLI agents: run the local CLI, return the full answer.
+  if (backend === "claude" || backend === "codex" || backend === "opencode" || backend === "gemini") {
     try {
       const answer = await runCliAgent(backend, body.messages);
       return new Response(answer, {
@@ -29,8 +29,8 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
-  // Local Ollama: stream tokens.
-  const iterator = streamChat(body.messages)[Symbol.asyncIterator]();
+  // Local Ollama: stream tokens (optional per-agent model override).
+  const iterator = streamChat(body.messages, body.model)[Symbol.asyncIterator]();
 
   // Probe the first chunk so upstream failures surface as a 503, not a broken stream.
   let first: IteratorResult<string>;

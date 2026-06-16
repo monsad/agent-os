@@ -1,7 +1,7 @@
 import { spawn as nodeSpawn } from "node:child_process";
 
 type SpawnFn = typeof nodeSpawn;
-export type CliBackend = "claude" | "codex";
+export type CliBackend = "claude" | "codex" | "opencode" | "gemini";
 type Msg = { role: string; content: string };
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -75,8 +75,37 @@ export async function runCodex(messages: Msg[], spawn: SpawnFn = nodeSpawn): Pro
   return extractCodexAnswer(out);
 }
 
+// opencode prints a one-time build banner (bun download URL, "> build · <name>")
+// before the assistant answer; strip ANSI + banner lines and keep the rest.
+export function extractOpencodeAnswer(stdout: string): string {
+  return stdout
+    .replace(/\x1b\[[0-9;]*m/g, "")
+    .split("\n")
+    .filter((l) => {
+      const t = l.trim();
+      if (!t) return false;
+      if (t.startsWith(">")) return false;
+      if (/^https?:\/\//.test(t)) return false;
+      return true;
+    })
+    .join("\n")
+    .trim();
+}
+
+export async function runOpencode(messages: Msg[], spawn: SpawnFn = nodeSpawn): Promise<string> {
+  const out = await runProcess(spawn, "opencode", ["run", buildPrompt(messages)]);
+  return extractOpencodeAnswer(out);
+}
+
+export async function runGemini(messages: Msg[], spawn: SpawnFn = nodeSpawn): Promise<string> {
+  const out = await runProcess(spawn, "gemini", ["-p", buildPrompt(messages)]);
+  return out.trim();
+}
+
 export function runCliAgent(backend: CliBackend, messages: Msg[], spawn: SpawnFn = nodeSpawn): Promise<string> {
   if (backend === "claude") return runClaude(messages, spawn);
   if (backend === "codex") return runCodex(messages, spawn);
+  if (backend === "opencode") return runOpencode(messages, spawn);
+  if (backend === "gemini") return runGemini(messages, spawn);
   throw new Error(`unknown cli backend: ${backend}`);
 }
