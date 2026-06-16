@@ -3,7 +3,11 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 vi.mock("@/lib/ollama", () => ({
   streamChat: vi.fn(),
 }));
+vi.mock("@/lib/cliAgent", () => ({
+  runCliAgent: vi.fn(),
+}));
 import { streamChat } from "@/lib/ollama";
+import { runCliAgent } from "@/lib/cliAgent";
 import { POST } from "./route";
 
 afterEach(() => vi.restoreAllMocks());
@@ -36,6 +40,20 @@ describe("POST /api/chat", () => {
       throw new Error("Ollama request failed: 500");
     });
     const res = await POST(req({ messages: [{ role: "user", content: "hi" }] }));
+    expect(res.status).toBe(503);
+  });
+
+  it("routes to the CLI agent and returns its answer for backend=claude", async () => {
+    (runCliAgent as unknown as ReturnType<typeof vi.fn>).mockResolvedValue("hi from claude");
+    const res = await POST(req({ messages: [{ role: "user", content: "hi" }], backend: "claude" }));
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("hi from claude");
+    expect(runCliAgent).toHaveBeenCalledWith("claude", [{ role: "user", content: "hi" }]);
+  });
+
+  it("returns 503 when the CLI agent throws", async () => {
+    (runCliAgent as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("not found"));
+    const res = await POST(req({ messages: [{ role: "user", content: "hi" }], backend: "codex" }));
     expect(res.status).toBe(503);
   });
 });

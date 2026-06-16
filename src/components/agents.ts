@@ -1,5 +1,7 @@
 export type AgentStatus = "online" | "offline" | "data";
 
+export type Backend = "ollama" | "claude" | "codex";
+
 export type Agent = {
   id: string;
   name: string;
@@ -7,7 +9,8 @@ export type Agent = {
   tagline: string;
   meta: { label: string; value: string }[];
   accent: string; // tailwind gradient stops, e.g. "from-emerald-400 to-teal-500"
-  live?: boolean; // backed by a real backend (Ollama)
+  live?: boolean; // backed by a real backend
+  backend?: Backend; // which backend powers chat
 };
 
 export const AGENTS: Agent[] = [
@@ -22,17 +25,33 @@ export const AGENTS: Agent[] = [
     ],
     accent: "from-emerald-400 to-teal-500",
     live: true,
+    backend: "ollama",
   },
   {
     id: "claude",
     name: "Claude",
-    status: "offline",
-    tagline: "Anthropic Messages API. Full tool use, MCPs, plugins.",
+    status: "online",
+    tagline: "Claude Code on your subscription — no API key. Full reasoning + tools.",
     meta: [
-      { label: "Tier", value: "premium" },
-      { label: "Key", value: "not set" },
+      { label: "Auth", value: "subscription" },
+      { label: "CLI", value: "claude -p" },
     ],
     accent: "from-orange-400 to-amber-500",
+    live: true,
+    backend: "claude",
+  },
+  {
+    id: "codex",
+    name: "Codex",
+    status: "online",
+    tagline: "OpenAI Codex on your ChatGPT subscription — no API key.",
+    meta: [
+      { label: "Auth", value: "subscription" },
+      { label: "CLI", value: "codex exec" },
+    ],
+    accent: "from-violet-400 to-indigo-500",
+    live: true,
+    backend: "codex",
   },
   {
     id: "openclaw",
@@ -65,18 +84,7 @@ export const AGENTS: Agent[] = [
       { label: "Model", value: "stub" },
       { label: "Provider", value: "—" },
     ],
-    accent: "from-violet-400 to-indigo-500",
-  },
-  {
-    id: "codex",
-    name: "Codex",
-    status: "offline",
-    tagline: "Code-focused agent. Repo edits, build, test.",
-    meta: [
-      { label: "Model", value: "stub" },
-      { label: "Provider", value: "—" },
-    ],
-    accent: "from-neutral-400 to-neutral-500",
+    accent: "from-fuchsia-400 to-pink-500",
   },
 ];
 

@@ -14,7 +14,7 @@ async function persist(conversationId: string, role: string, content: string) {
   } catch { /* non-fatal */ }
 }
 
-export function useChat(conversationId: string) {
+export function useChat(conversationId: string, backend?: string) {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [status, setStatus] = useState<ChatStatus>("idle");
 
@@ -31,7 +31,7 @@ export function useChat(conversationId: string) {
         res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: history }),
+          body: JSON.stringify({ messages: history, backend }),
         });
       } catch {
         setStatus("offline");
@@ -59,7 +59,7 @@ export function useChat(conversationId: string) {
       void persist(conversationId, "assistant", acc);
       setStatus("idle");
     },
-    [messages, conversationId],
+    [messages, conversationId, backend],
   );
 
   return { messages, send, status };

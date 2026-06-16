@@ -1,7 +1,10 @@
 import { streamChat, type ChatMessage } from "@/lib/ollama";
+import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
+
+type Backend = "ollama" | CliBackend;
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { messages?: ChatMessage[] };
+  let body: { messages?: ChatMessage[]; backend?: Backend };
   try {
     body = await request.json();
   } catch {
@@ -11,6 +14,22 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "messages required" }, { status: 400 });
   }
 
+  const backend: Backend = body.backend ?? "ollama";
+
+  // Subscription-backed CLI agents: run the local CLI, return the full answer.
+  if (backend === "claude" || backend === "codex") {
+    try {
+      const answer = await runCliAgent(backend, body.messages);
+      return new Response(answer, {
+        status: 200,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    } catch {
+      return Response.json({ error: `${backend}_unavailable` }, { status: 503 });
+    }
+  }
+
+  // Local Ollama: stream tokens.
   const iterator = streamChat(body.messages)[Symbol.asyncIterator]();
 
   // Probe the first chunk so upstream failures surface as a 503, not a broken stream.
