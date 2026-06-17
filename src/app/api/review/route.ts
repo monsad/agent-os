@@ -1,0 +1,77 @@
+import { spawn } from "node:child_process";
+import { getRepo } from "@/lib/repo";
+import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
+
+// Heterogeneous reviewers — each agent gets a DIFFERENT lens, which is the
+// whole point: four reviewers with the same prompt is one reviewer with a
+// bigger bill; different lenses surface bugs no single pass would.
+const REVIEWERS: { id: string; name: string; backend: CliBackend; lens: string }[] = [
+  { id: "claude", name: "Claude", backend: "claude", lens: "correctness & logic bugs: off-by-one, null/undefined, bad error handling, broken edge cases, wrong control flow" },
+  { id: "codex", name: "Codex", backend: "codex", lens: "security: injection, secrets in code, unsafe/untrusted input, auth mistakes, and untrusted text flowing into an LLM/prompt" },
+  { id: "openclaw", name: "OpenClaw", backend: "opencode", lens: "architecture & simplification: duplication, dead code, over-engineering, something that already exists, needless complexity" },
+  { id: "gemini", name: "Gemini", backend: "gemini", lens: "readability & tests: unclear names, confusing code, and especially test changes that weaken or delete assertions to make a green check" },
+];
+
+const MAX_DIFF = 16000;
+
+function gitDiff(repo: string, mode: string, ref?: string): Promise<string> {
+  // working: everything uncommitted vs HEAD. branch: changes vs another branch.
+  const args =
+    mode === "branch"
+      ? ["-C", repo, "diff", ref && ref.trim() ? ref.trim() : "main"]
+      : ["-C", repo, "diff", "HEAD"];
+  return new Promise((resolve, reject) => {
+    const proc = spawn("git", args, { stdio: ["ignore", "pipe", "pipe"] });
+    let out = "";
+    let err = "";
+    proc.stdout?.on("data", (d) => { out += d.toString(); });
+    proc.stderr?.on("data", (d) => { err += d.toString(); });
+    proc.on("error", (e) => reject(new Error(`git failed: ${e.message}`)));
+    proc.on("close", (code) => (code === 0 ? resolve(out) : reject(new Error(`git diff failed: ${err || out}`))));
+  });
+}
+
+export async function POST(request: Request): Promise<Response> {
+  let body: { mode?: string; ref?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid json" }, { status: 400 });
+  }
+  const repoPath = getRepo().repoPath;
+  if (!repoPath) return Response.json({ error: "no_repo" }, { status: 400 });
+
+  const mode = body.mode === "branch" ? "branch" : "working";
+  let diff: string;
+  try {
+    diff = await gitDiff(repoPath, mode, body.ref);
+  } catch (e) {
+    return Response.json({ error: e instanceof Error ? e.message : "git failed" }, { status: 400 });
+  }
+  if (!diff.trim()) return Response.json({ error: "empty_diff" }, { status: 400 });
+
+  const truncated = diff.length > MAX_DIFF;
+  const clipped = truncated ? diff.slice(0, MAX_DIFF) + "\n…[diff truncated]" : diff;
+
+  const findings = await Promise.all(
+    REVIEWERS.map(async (r) => {
+      const prompt = `You are a code reviewer. Review ONLY for: ${r.lens}.
+Be concrete and concise: list each issue as "- file:line — problem — suggested fix".
+If you find nothing in your area, reply exactly "No issues found in this area."
+Do not summarize the whole diff. Here is the diff to review:
+
+${clipped}`;
+      try {
+        const review = await runCliAgent(r.backend, [{ role: "user", content: prompt }], undefined, {
+          cwd: repoPath,
+          readOnly: true,
+        });
+        return { id: r.id, name: r.name, lens: r.lens, review, ok: true };
+      } catch (e) {
+        return { id: r.id, name: r.name, lens: r.lens, review: e instanceof Error ? e.message : "failed", ok: false };
+      }
+    }),
+  );
+
+  return Response.json({ repo: repoPath, mode, truncated, findings });
+}
