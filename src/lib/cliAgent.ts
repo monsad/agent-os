@@ -100,7 +100,11 @@ export function extractOpencodeAnswer(stdout: string): string {
 }
 
 export async function runOpencode(messages: Msg[], spawn: SpawnFn = nodeSpawn, opts: RunOpts = {}): Promise<string> {
-  const out = await runProcess(spawn, "opencode", ["run", buildPrompt(messages)], opts.cwd);
+  // opencode picks its own project root unless told; --dir pins it to the repo.
+  const args = ["run"];
+  if (opts.cwd) args.push("--dir", opts.cwd);
+  args.push(buildPrompt(messages));
+  const out = await runProcess(spawn, "opencode", args, opts.cwd);
   return extractOpencodeAnswer(out);
 }
 
