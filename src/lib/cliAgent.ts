@@ -3,14 +3,21 @@ import { spawn as nodeSpawn } from "node:child_process";
 type SpawnFn = typeof nodeSpawn;
 export type CliBackend = "claude" | "codex" | "opencode" | "gemini";
 type Msg = { role: string; content: string };
+export type RunOpts = { cwd?: string; readOnly?: boolean };
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
-function runProcess(spawn: SpawnFn, cmd: string, args: string[], timeoutMs = DEFAULT_TIMEOUT_MS): Promise<string> {
+function runProcess(
+  spawn: SpawnFn,
+  cmd: string,
+  args: string[],
+  cwd: string = process.cwd(),
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     // stdin = "ignore" gives the child an immediate EOF; otherwise CLIs like
     // codex block forever waiting for piped input that never arrives.
-    const proc = spawn(cmd, args, { cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(cmd, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     let err = "";
     let settled = false;
@@ -59,19 +66,18 @@ export function extractCodexAnswer(stdout: string): string {
   return collected.join("\n").trim();
 }
 
-export async function runClaude(messages: Msg[], spawn: SpawnFn = nodeSpawn): Promise<string> {
-  const out = await runProcess(spawn, "claude", ["-p", buildPrompt(messages), "--output-format", "text"]);
+export async function runClaude(messages: Msg[], spawn: SpawnFn = nodeSpawn, opts: RunOpts = {}): Promise<string> {
+  const args = ["-p", buildPrompt(messages), "--output-format", "text"];
+  if (opts.readOnly) args.push("--permission-mode", "plan");
+  const out = await runProcess(spawn, "claude", args, opts.cwd);
   return out.trim();
 }
 
-export async function runCodex(messages: Msg[], spawn: SpawnFn = nodeSpawn): Promise<string> {
-  const out = await runProcess(spawn, "codex", [
-    "exec",
-    "--skip-git-repo-check",
-    "--color",
-    "never",
-    buildPrompt(messages),
-  ]);
+export async function runCodex(messages: Msg[], spawn: SpawnFn = nodeSpawn, opts: RunOpts = {}): Promise<string> {
+  const args = ["exec", "--skip-git-repo-check", "--color", "never"];
+  if (opts.readOnly) args.push("--sandbox", "read-only");
+  args.push(buildPrompt(messages));
+  const out = await runProcess(spawn, "codex", args, opts.cwd);
   return extractCodexAnswer(out);
 }
 
@@ -92,20 +98,29 @@ export function extractOpencodeAnswer(stdout: string): string {
     .trim();
 }
 
-export async function runOpencode(messages: Msg[], spawn: SpawnFn = nodeSpawn): Promise<string> {
-  const out = await runProcess(spawn, "opencode", ["run", buildPrompt(messages)]);
+export async function runOpencode(messages: Msg[], spawn: SpawnFn = nodeSpawn, opts: RunOpts = {}): Promise<string> {
+  const out = await runProcess(spawn, "opencode", ["run", buildPrompt(messages)], opts.cwd);
   return extractOpencodeAnswer(out);
 }
 
-export async function runGemini(messages: Msg[], spawn: SpawnFn = nodeSpawn): Promise<string> {
-  const out = await runProcess(spawn, "gemini", ["-p", buildPrompt(messages)]);
+export async function runGemini(messages: Msg[], spawn: SpawnFn = nodeSpawn, opts: RunOpts = {}): Promise<string> {
+  // --skip-trust: required for headless runs in directories Gemini hasn't been
+  // interactively trusted in (otherwise it refuses with exit 55).
+  const args = ["-p", buildPrompt(messages), "--skip-trust"];
+  if (opts.readOnly) args.push("--approval-mode", "plan");
+  const out = await runProcess(spawn, "gemini", args, opts.cwd);
   return out.trim();
 }
 
-export function runCliAgent(backend: CliBackend, messages: Msg[], spawn: SpawnFn = nodeSpawn): Promise<string> {
-  if (backend === "claude") return runClaude(messages, spawn);
-  if (backend === "codex") return runCodex(messages, spawn);
-  if (backend === "opencode") return runOpencode(messages, spawn);
-  if (backend === "gemini") return runGemini(messages, spawn);
+export function runCliAgent(
+  backend: CliBackend,
+  messages: Msg[],
+  spawn: SpawnFn = nodeSpawn,
+  opts: RunOpts = {},
+): Promise<string> {
+  if (backend === "claude") return runClaude(messages, spawn, opts);
+  if (backend === "codex") return runCodex(messages, spawn, opts);
+  if (backend === "opencode") return runOpencode(messages, spawn, opts);
+  if (backend === "gemini") return runGemini(messages, spawn, opts);
   throw new Error(`unknown cli backend: ${backend}`);
 }

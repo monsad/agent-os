@@ -5,6 +5,7 @@ import { StatusStrip } from "./StatusStrip";
 import { AgentCard } from "./AgentCard";
 import { AgentControlRoom } from "./AgentControlRoom";
 import { ContextRail } from "./ContextRail/ContextRail";
+import { CouncilView } from "./CouncilView";
 import { AGENTS, type Agent } from "./agents";
 
 export function MissionControlLayout() {
@@ -52,6 +53,8 @@ export function MissionControlLayout() {
               </div>
             </>
           )}
+
+          {view === "council" && <CouncilView />}
 
           {(view === "memory" || view === "graph") && (
             <div className="panel rounded-2xl p-5">
