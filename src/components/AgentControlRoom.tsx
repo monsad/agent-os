@@ -13,7 +13,7 @@ export function AgentControlRoom({ agent, onClose }: { agent: Agent; onClose: ()
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/70 p-6" onClick={onClose}>
       <div
-        className="flex h-[80vh] w-[760px] max-w-[94vw] flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0b0b0d]"
+        className="flex h-[80vh] w-[760px] max-w-[94vw] flex-col overflow-hidden rounded-2xl border border-white/[0.12] bg-[#08272c]/80 backdrop-blur-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
