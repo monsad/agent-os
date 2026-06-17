@@ -5,6 +5,7 @@ const WORKSPACE = [
   { id: "mission-control", label: "Mission Control", icon: "▦" },
   { id: "council", label: "Broad Opinion", icon: "⚖" },
   { id: "review", label: "Code Review", icon: "✓" },
+  { id: "brain", label: "Night Shift", icon: "☾" },
   { id: "memory", label: "Memory", icon: "◍" },
   { id: "graph", label: "Knowledge Graph", icon: "✸" },
 ];
