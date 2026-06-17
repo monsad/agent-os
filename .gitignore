@@ -10,3 +10,6 @@ playwright-report/
 
 # build artifacts
 *.tsbuildinfo
+data/context/
+data/repos/
+data/workspace.json

@@ -61,7 +61,7 @@ export function ChatWorkspace({
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Message the agent…"
           disabled={status === "streaming"}
-          className="w-full rounded-md bg-white/[0.04] px-3 py-2 text-sm outline-none disabled:opacity-50"
+          className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-cyan-400/70 focus:bg-black/45 disabled:opacity-50"
         />
       </form>
     </section>
