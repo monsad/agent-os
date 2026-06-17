@@ -80,7 +80,7 @@ describe("runGemini", () => {
     const spawn = fakeSpawn("answer\n");
     const out = await runGemini([{ role: "user", content: "hi" }], spawn as never);
     expect(out).toBe("answer");
-    expect(spawn).toHaveBeenCalledWith("gemini", ["-p", "user: hi\nassistant:"], expect.anything());
+    expect(spawn).toHaveBeenCalledWith("gemini", ["-p", "user: hi\nassistant:", "--skip-trust"], expect.anything());
   });
 });
 
