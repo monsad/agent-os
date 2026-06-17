@@ -10,10 +10,32 @@ export function CouncilView() {
   const [opinions, setOpinions] = useState<Opinion[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [uploaded, setUploaded] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     fetch("/api/repo").then((r) => r.json()).then((d) => setRepo(d.repoPath ?? null)).catch(() => {});
   }, []);
+
+  async function uploadFiles(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    setErr(null);
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      Array.from(list).forEach((f) => fd.append("files", f));
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const d = await res.json();
+      if (res.ok) {
+        setRepo(d.dir);
+        setUploaded((prev) => [...new Set([...prev, ...d.saved])]);
+      } else {
+        setErr(d.error ?? "upload failed");
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function attachRepo(e: FormEvent) {
     e.preventDefault();
@@ -60,19 +82,50 @@ export function CouncilView() {
       <div className="panel rounded-2xl p-5">
         <p className="eyebrow mb-2">Repository</p>
         {repo ? (
-          <p className="mono mb-3 text-sm text-emerald-300/90">✓ {repo}</p>
+          <p className="mono mb-1 text-sm text-emerald-300/90">✓ {repo}</p>
         ) : (
-          <p className="mb-3 text-sm text-neutral-400">No repo attached. Paste a local path or a git URL.</p>
+          <p className="mb-1 text-sm text-neutral-400">No repo attached yet.</p>
         )}
+        <p className="mb-2 text-xs text-neutral-400">Type a local path or git URL below, then press Attach to change it.</p>
         <form onSubmit={attachRepo} className="flex gap-2">
           <input
             value={repoInput}
             onChange={(e) => setRepoInput(e.target.value)}
             placeholder="~/my-project  or  https://github.com/owner/repo"
-            className="mono flex-1 rounded-lg bg-white/[0.04] px-3 py-2 text-sm outline-none"
+            className="mono flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-cyan-400/70 focus:bg-black/45"
           />
-          <button type="submit" className="panel panel-hover rounded-lg px-4 py-2 text-sm">Attach</button>
+          <button
+            type="submit"
+            className="rounded-lg border border-cyan-400/40 bg-cyan-400/15 px-5 py-2.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/25"
+          >
+            Attach
+          </button>
         </form>
+
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <p className="mb-2 text-xs text-neutral-400">…or add files from your computer (agents read them as context):</p>
+          <label
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              void uploadFiles(e.dataTransfer.files);
+            }}
+            className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-white/25 bg-black/20 px-4 py-6 text-center transition hover:border-cyan-400/60 hover:bg-black/30"
+          >
+            <span className="text-2xl text-cyan-300/70">⤓</span>
+            <span className="text-sm text-neutral-200">{uploading ? "Uploading…" : "Drop files here or click to browse"}</span>
+            <span className="text-xs text-neutral-500">code, docs, notes, any text files</span>
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => void uploadFiles(e.target.files)}
+            />
+          </label>
+          {uploaded.length > 0 && (
+            <p className="mono mt-2 text-xs text-emerald-300/80">✓ {uploaded.length} file(s): {uploaded.join(", ")}</p>
+          )}
+        </div>
       </div>
 
       <div className="panel rounded-2xl p-5">
@@ -86,7 +139,7 @@ export function CouncilView() {
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="e.g. Where are the biggest risks in this codebase?"
             disabled={!repo || busy}
-            className="flex-1 rounded-lg bg-white/[0.04] px-3 py-2 text-sm outline-none disabled:opacity-50"
+            className="flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-cyan-400/70 focus:bg-black/45 disabled:opacity-50"
           />
           <button
             type="submit"
