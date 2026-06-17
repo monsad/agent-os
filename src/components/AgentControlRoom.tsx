@@ -3,12 +3,14 @@ import { useState } from "react";
 import { STATUS_DOT, STATUS_LABEL, type Agent } from "./agents";
 import { ChatWorkspace } from "./ChatWorkspace";
 import { GraphExplorer } from "./ContextRail/GraphExplorer";
+import { HermesControlRoom } from "./HermesControlRoom";
 
 const TABS = ["Chat", "Memory", "Config"] as const;
 type Tab = (typeof TABS)[number];
 
 export function AgentControlRoom({ agent, onClose }: { agent: Agent; onClose: () => void }) {
   const [tab, setTab] = useState<Tab>(agent.live ? "Chat" : "Config");
+  const isHermes = agent.id === "hermes";
 
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/70 p-6" onClick={onClose}>
@@ -32,6 +34,10 @@ export function AgentControlRoom({ agent, onClose }: { agent: Agent; onClose: ()
           <button onClick={onClose} aria-label="Close" className="text-neutral-500 hover:text-neutral-200">✕</button>
         </div>
 
+        {isHermes ? (
+          <HermesControlRoom />
+        ) : (
+          <>
         <div className="flex gap-1 border-b border-white/[0.06] px-4 py-2 text-xs">
           {TABS.map((t) => (
             <button
@@ -76,6 +82,8 @@ export function AgentControlRoom({ agent, onClose }: { agent: Agent; onClose: ()
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
     </div>
   );

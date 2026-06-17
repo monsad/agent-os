@@ -71,10 +71,10 @@ export const AGENTS: Agent[] = [
     id: "hermes",
     name: "Hermes",
     status: "online",
-    tagline: "Nous Research agent — Hermes 3 running locally on Ollama.",
+    tagline: "Full Hermes agent — skills, kanban, plugins. Control panel inside.",
     meta: [
-      { label: "Model", value: "hermes3:8b" },
-      { label: "Provider", value: "Ollama" },
+      { label: "CLI", value: "hermes" },
+      { label: "Panel", value: "skills · kanban" },
     ],
     accent: "from-sky-400 to-blue-500",
     live: true,
