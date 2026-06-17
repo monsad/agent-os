@@ -25,9 +25,15 @@ function run(spawn: SpawnFn, args: string[]): Promise<string> {
   });
 }
 
+// graphify needs an LLM to extract entities; default to local Ollama so the
+// graph builds with no API key (override via GRAPHIFY_BACKEND / GRAPHIFY_MODEL).
+const BACKEND = process.env.GRAPHIFY_BACKEND ?? "ollama";
+const MODEL = process.env.GRAPHIFY_MODEL ?? "qwen2.5:14b";
+const llmArgs = ["--backend", BACKEND, "--model", MODEL, "--max-concurrency", "1"];
+
 export async function rebuild(notesDir: string, spawn: SpawnFn = nodeSpawn): Promise<void> {
-  await run(spawn, [notesDir, "--update", "--no-viz"]);
-  await run(spawn, [notesDir, "--html"]);
+  await run(spawn, [notesDir, "--update", "--no-viz", ...llmArgs]);
+  await run(spawn, [notesDir, "--html", ...llmArgs]);
 }
 
 // notesDir is accepted for a consistent call signature with rebuild() and a future
