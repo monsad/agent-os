@@ -96,6 +96,29 @@ export const AGENTS: Agent[] = [
   },
 ];
 
+// Every model option the user has, usable from any chat.
+export type BackendOption = { id: string; label: string; backend: Backend; model?: string };
+
+export const BACKEND_OPTIONS: BackendOption[] = [
+  { id: "claude", label: "Claude Opus · Max", backend: "claude" },
+  { id: "codex", label: "GPT-5.5 · Plus", backend: "codex" },
+  { id: "gemini", label: "Gemini · Google", backend: "gemini" },
+  { id: "opencode", label: "OpenClaw · opencode", backend: "opencode" },
+  { id: "ollama-qwen", label: "Local · qwen2.5:14b", backend: "ollama", model: "qwen2.5:14b" },
+  { id: "ollama-hermes", label: "Local · hermes3:8b", backend: "ollama", model: "hermes3:8b" },
+];
+
+const DEFAULT_OPTION = "ollama-qwen";
+
+export function optionFor(backend?: Backend, model?: string): BackendOption {
+  return (
+    BACKEND_OPTIONS.find((o) => o.backend === backend && (o.model ?? undefined) === (model ?? undefined)) ??
+    BACKEND_OPTIONS.find((o) => o.backend === backend) ??
+    BACKEND_OPTIONS.find((o) => o.id === DEFAULT_OPTION) ??
+    BACKEND_OPTIONS[0]
+  );
+}
+
 export const STATUS_DOT: Record<AgentStatus, string> = {
   online: "bg-emerald-400",
   data: "bg-sky-400",
