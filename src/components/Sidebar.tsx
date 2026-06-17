@@ -4,6 +4,7 @@ import { AGENTS, STATUS_DOT, type Agent } from "./agents";
 const WORKSPACE = [
   { id: "mission-control", label: "Mission Control", icon: "▦" },
   { id: "council", label: "Broad Opinion", icon: "⚖" },
+  { id: "review", label: "Code Review", icon: "✓" },
   { id: "memory", label: "Memory", icon: "◍" },
   { id: "graph", label: "Knowledge Graph", icon: "✸" },
 ];
