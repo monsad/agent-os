@@ -18,7 +18,7 @@ export function Sidebar({
   onSelectAgent: (a: Agent) => void;
 }) {
   return (
-    <nav className="flex h-screen w-[230px] flex-col gap-6 overflow-y-auto border-r border-white/[0.06] bg-black/20 px-3 py-5">
+    <nav className="flex h-screen w-[230px] flex-col gap-6 overflow-y-auto border-r border-white/[0.08] bg-white/[0.03] px-3 py-5 backdrop-blur-2xl">
       <div className="flex items-center gap-2 px-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-indigo-400 to-fuchsia-500 text-xs font-bold text-black">
           A
