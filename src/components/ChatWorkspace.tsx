@@ -1,6 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { useChat } from "./hooks/useChat";
+import { BACKEND_OPTIONS, optionFor, type Backend } from "./agents";
 
 export function ChatWorkspace({
   conversationId,
@@ -11,19 +12,20 @@ export function ChatWorkspace({
   backend?: string;
   model?: string;
 }) {
-  const { messages, send, status } = useChat(conversationId, backend, model);
+  const [sel, setSel] = useState(() => optionFor(backend as Backend | undefined, model));
+  const { messages, send, status } = useChat(conversationId, sel.backend, sel.model);
   const [draft, setDraft] = useState("");
 
   const offlineHint =
-    backend === "claude"
+    sel.backend === "claude"
       ? "Claude CLI unavailable — check `claude` is installed and logged in."
-      : backend === "codex"
+      : sel.backend === "codex"
         ? "Codex CLI unavailable — check `codex` is installed and logged in."
-        : backend === "opencode"
+        : sel.backend === "opencode"
           ? "OpenClaw unavailable — check `opencode` is installed and configured."
-          : backend === "gemini"
+          : sel.backend === "gemini"
             ? "Gemini not logged in — run `gemini` once and sign in with Google."
-            : "Local model offline — run `ollama serve` (model `qwen2.5:14b`).";
+            : "Local model offline — run `ollama serve`.";
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -56,6 +58,21 @@ export function ChatWorkspace({
         {waiting && <p className="mono text-xs text-neutral-500">thinking…</p>}
       </div>
       <form data-testid="composer" onSubmit={onSubmit} className="border-t border-white/[0.06] p-3">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="eyebrow">Model</span>
+          <select
+            value={sel.id}
+            onChange={(e) => setSel(BACKEND_OPTIONS.find((o) => o.id === e.target.value) ?? sel)}
+            disabled={status === "streaming"}
+            className="rounded-md border border-white/15 bg-black/40 px-2 py-1 text-xs text-neutral-200 outline-none focus:border-cyan-400/60 disabled:opacity-50"
+          >
+            {BACKEND_OPTIONS.map((o) => (
+              <option key={o.id} value={o.id} className="bg-neutral-900">
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
