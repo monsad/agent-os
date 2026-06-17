@@ -3,7 +3,7 @@ import { spawn as nodeSpawn } from "node:child_process";
 type SpawnFn = typeof nodeSpawn;
 export type CliBackend = "claude" | "codex" | "opencode" | "gemini";
 type Msg = { role: string; content: string };
-export type RunOpts = { cwd?: string; readOnly?: boolean };
+export type RunOpts = { cwd?: string; readOnly?: boolean; write?: boolean };
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -69,7 +69,8 @@ export function extractCodexAnswer(stdout: string): string {
 export async function runClaude(messages: Msg[], spawn: SpawnFn = nodeSpawn, opts: RunOpts = {}): Promise<string> {
   const args = ["-p", buildPrompt(messages), "--output-format", "text"];
   if (opts.readOnly) args.push("--permission-mode", "plan");
-  const out = await runProcess(spawn, "claude", args, opts.cwd);
+  else if (opts.write) args.push("--permission-mode", "acceptEdits");
+  const out = await runProcess(spawn, "claude", args, opts.cwd, opts.write ? 600_000 : undefined);
   return out.trim();
 }
 
