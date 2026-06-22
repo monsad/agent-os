@@ -3,7 +3,7 @@ import { spawn as nodeSpawn } from "node:child_process";
 type SpawnFn = typeof nodeSpawn;
 export type CliBackend = "claude" | "codex" | "opencode" | "gemini";
 type Msg = { role: string; content: string };
-export type RunOpts = { cwd?: string; readOnly?: boolean; write?: boolean };
+export type RunOpts = { cwd?: string; readOnly?: boolean; write?: boolean; timeoutMs?: number };
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -70,7 +70,7 @@ export async function runClaude(messages: Msg[], spawn: SpawnFn = nodeSpawn, opt
   const args = ["-p", buildPrompt(messages), "--output-format", "text"];
   if (opts.readOnly) args.push("--permission-mode", "plan");
   else if (opts.write) args.push("--permission-mode", "acceptEdits");
-  const out = await runProcess(spawn, "claude", args, opts.cwd, opts.write ? 600_000 : undefined);
+  const out = await runProcess(spawn, "claude", args, opts.cwd, opts.timeoutMs ?? (opts.write ? 600_000 : undefined));
   return out.trim();
 }
 
@@ -78,7 +78,7 @@ export async function runCodex(messages: Msg[], spawn: SpawnFn = nodeSpawn, opts
   const args = ["exec", "--skip-git-repo-check", "--color", "never"];
   if (opts.readOnly) args.push("--sandbox", "read-only");
   args.push(buildPrompt(messages));
-  const out = await runProcess(spawn, "codex", args, opts.cwd);
+  const out = await runProcess(spawn, "codex", args, opts.cwd, opts.timeoutMs);
   return extractCodexAnswer(out);
 }
 
@@ -104,7 +104,7 @@ export async function runOpencode(messages: Msg[], spawn: SpawnFn = nodeSpawn, o
   const args = ["run"];
   if (opts.cwd) args.push("--dir", opts.cwd);
   args.push(buildPrompt(messages));
-  const out = await runProcess(spawn, "opencode", args, opts.cwd);
+  const out = await runProcess(spawn, "opencode", args, opts.cwd, opts.timeoutMs);
   return extractOpencodeAnswer(out);
 }
 
@@ -113,7 +113,7 @@ export async function runGemini(messages: Msg[], spawn: SpawnFn = nodeSpawn, opt
   // interactively trusted in (otherwise it refuses with exit 55).
   const args = ["-p", buildPrompt(messages), "--skip-trust"];
   if (opts.readOnly) args.push("--approval-mode", "plan");
-  const out = await runProcess(spawn, "gemini", args, opts.cwd);
+  const out = await runProcess(spawn, "gemini", args, opts.cwd, opts.timeoutMs);
   return out.trim();
 }
 

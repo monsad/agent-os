@@ -3,11 +3,11 @@ import { getRepo } from "@/lib/repo";
 import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
 import { timedRun, newBatchId } from "@/lib/runs";
 
+// Gemini excluded — Google retired the free Gemini Code Assist CLI tier.
 const AGENTS: { id: string; name: string; backend: CliBackend }[] = [
   { id: "claude", name: "Claude", backend: "claude" },
   { id: "codex", name: "Codex", backend: "codex" },
   { id: "openclaw", name: "OpenClaw", backend: "opencode" },
-  { id: "gemini", name: "Gemini", backend: "gemini" },
 ];
 
 // Register the task on the Hermes kanban so it's tracked/visible. Best-effort:
@@ -56,7 +56,7 @@ to this codebase. Do not modify anything — propose only.`;
       try {
         const answer = await timedRun(
           { feature: "delegate", agent: a.name, backend: a.backend, task: task.slice(0, 140), repo: repoPath, batchId },
-          () => runCliAgent(a.backend, [{ role: "user", content: prompt }], undefined, { cwd: repoPath, readOnly: true }),
+          () => runCliAgent(a.backend, [{ role: "user", content: prompt }], undefined, { cwd: repoPath, readOnly: true, timeoutMs: 300_000 }),
         );
         return { id: a.id, name: a.name, answer, ok: true };
       } catch (e) {
