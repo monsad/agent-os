@@ -84,14 +84,13 @@ export const AGENTS: Agent[] = [
   {
     id: "gemini",
     name: "Gemini",
-    status: "online",
-    tagline: "Google Gemini on your account — log in once with `gemini`, no API key.",
+    status: "offline",
+    tagline: "Free CLI tier retired by Google (migrate to Antigravity, or use a GEMINI_API_KEY).",
     meta: [
-      { label: "Auth", value: "Google login" },
+      { label: "Auth", value: "free tier ended" },
       { label: "CLI", value: "gemini -p" },
     ],
     accent: "from-fuchsia-400 to-pink-500",
-    live: true,
     backend: "gemini",
   },
 ];
@@ -102,7 +101,6 @@ export type BackendOption = { id: string; label: string; backend: Backend; model
 export const BACKEND_OPTIONS: BackendOption[] = [
   { id: "claude", label: "Claude Opus · Max", backend: "claude" },
   { id: "codex", label: "GPT-5.5 · Plus", backend: "codex" },
-  { id: "gemini", label: "Gemini · Google", backend: "gemini" },
   { id: "opencode", label: "OpenClaw · opencode", backend: "opencode" },
   { id: "ollama-qwen", label: "Local · qwen2.5:14b", backend: "ollama", model: "qwen2.5:14b" },
   { id: "ollama-hermes", label: "Local · hermes3:8b", backend: "ollama", model: "hermes3:8b" },

@@ -2,11 +2,12 @@ import { getRepo } from "@/lib/repo";
 import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
 import { timedRun, newBatchId } from "@/lib/runs";
 
+// Gemini is excluded: Google retired the free Gemini Code Assist CLI tier for
+// individuals (IneligibleTierError). Add it back if a GEMINI_API_KEY is set up.
 const COUNCIL: { id: string; name: string; backend: CliBackend }[] = [
   { id: "claude", name: "Claude", backend: "claude" },
   { id: "codex", name: "Codex", backend: "codex" },
   { id: "openclaw", name: "OpenClaw", backend: "opencode" },
-  { id: "gemini", name: "Gemini", backend: "gemini" },
 ];
 
 export async function POST(request: Request): Promise<Response> {
@@ -31,7 +32,7 @@ export async function POST(request: Request): Promise<Response> {
       try {
         const answer = await timedRun(
           { feature: "council", agent: c.name, backend: c.backend, task: question.slice(0, 140), repo: repoPath, batchId },
-          () => runCliAgent(c.backend, messages, undefined, { cwd: repoPath, readOnly: true }),
+          () => runCliAgent(c.backend, messages, undefined, { cwd: repoPath, readOnly: true, timeoutMs: 300_000 }),
         );
         return { id: c.id, name: c.name, answer, ok: true };
       } catch (e) {

@@ -6,11 +6,12 @@ import { timedRun, newBatchId } from "@/lib/runs";
 // Heterogeneous reviewers — each agent gets a DIFFERENT lens, which is the
 // whole point: four reviewers with the same prompt is one reviewer with a
 // bigger bill; different lenses surface bugs no single pass would.
+// Gemini excluded — Google retired the free Gemini Code Assist CLI tier. Its
+// readability/tests lens is folded into Claude's correctness lens.
 const REVIEWERS: { id: string; name: string; backend: CliBackend; lens: string }[] = [
-  { id: "claude", name: "Claude", backend: "claude", lens: "correctness & logic bugs: off-by-one, null/undefined, bad error handling, broken edge cases, wrong control flow" },
+  { id: "claude", name: "Claude", backend: "claude", lens: "correctness & logic bugs: off-by-one, null/undefined, bad error handling, broken edge cases, wrong control flow — and test changes that weaken or delete assertions to fake a green check" },
   { id: "codex", name: "Codex", backend: "codex", lens: "security: injection, secrets in code, unsafe/untrusted input, auth mistakes, and untrusted text flowing into an LLM/prompt" },
   { id: "openclaw", name: "OpenClaw", backend: "opencode", lens: "architecture & simplification: duplication, dead code, over-engineering, something that already exists, needless complexity" },
-  { id: "gemini", name: "Gemini", backend: "gemini", lens: "readability & tests: unclear names, confusing code, and especially test changes that weaken or delete assertions to make a green check" },
 ];
 
 const MAX_DIFF = 16000;
@@ -66,7 +67,7 @@ ${clipped}`;
       try {
         const review = await timedRun(
           { feature: "review", agent: r.name, backend: r.backend, task: `${mode} diff · ${r.lens.split(":")[0]}`, repo: repoPath, batchId },
-          () => runCliAgent(r.backend, [{ role: "user", content: prompt }], undefined, { cwd: repoPath, readOnly: true }),
+          () => runCliAgent(r.backend, [{ role: "user", content: prompt }], undefined, { cwd: repoPath, readOnly: true, timeoutMs: 300_000 }),
         );
         return { id: r.id, name: r.name, lens: r.lens, review, ok: true };
       } catch (e) {
