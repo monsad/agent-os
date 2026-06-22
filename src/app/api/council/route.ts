@@ -1,5 +1,6 @@
 import { getRepo } from "@/lib/repo";
 import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
+import { timedRun, newBatchId } from "@/lib/runs";
 
 const COUNCIL: { id: string; name: string; backend: CliBackend }[] = [
   { id: "claude", name: "Claude", backend: "claude" },
@@ -23,11 +24,15 @@ export async function POST(request: Request): Promise<Response> {
 
   const selected = body.agents?.length ? COUNCIL.filter((c) => body.agents!.includes(c.id)) : COUNCIL;
   const messages = [{ role: "user", content: question }];
+  const batchId = newBatchId();
 
   const opinions = await Promise.all(
     selected.map(async (c) => {
       try {
-        const answer = await runCliAgent(c.backend, messages, undefined, { cwd: repoPath, readOnly: true });
+        const answer = await timedRun(
+          { feature: "council", agent: c.name, backend: c.backend, task: question.slice(0, 140), repo: repoPath, batchId },
+          () => runCliAgent(c.backend, messages, undefined, { cwd: repoPath, readOnly: true }),
+        );
         return { id: c.id, name: c.name, answer, ok: true };
       } catch (e) {
         return { id: c.id, name: c.name, answer: e instanceof Error ? e.message : "failed", ok: false };

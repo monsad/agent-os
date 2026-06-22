@@ -9,6 +9,7 @@ import { CouncilView } from "./CouncilView";
 import { ReviewView } from "./ReviewView";
 import { DelegateView } from "./DelegateView";
 import { BrainView } from "./BrainView";
+import { ObservabilityView } from "./ObservabilityView";
 import { AGENTS, type Agent } from "./agents";
 
 export function MissionControlLayout() {
@@ -62,6 +63,8 @@ export function MissionControlLayout() {
           {view === "delegate" && <DelegateView />}
 
           {view === "review" && <ReviewView />}
+
+          {view === "observability" && <ObservabilityView />}
 
           {view === "brain" && <BrainView />}
 
