@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { getRepo } from "@/lib/repo";
 import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
+import { timedRun, newBatchId } from "@/lib/runs";
 
 // Heterogeneous reviewers — each agent gets a DIFFERENT lens, which is the
 // whole point: four reviewers with the same prompt is one reviewer with a
@@ -53,6 +54,7 @@ export async function POST(request: Request): Promise<Response> {
   const truncated = diff.length > MAX_DIFF;
   const clipped = truncated ? diff.slice(0, MAX_DIFF) + "\n…[diff truncated]" : diff;
 
+  const batchId = newBatchId();
   const findings = await Promise.all(
     REVIEWERS.map(async (r) => {
       const prompt = `You are a code reviewer. Review ONLY for: ${r.lens}.
@@ -62,10 +64,10 @@ Do not summarize the whole diff. Here is the diff to review:
 
 ${clipped}`;
       try {
-        const review = await runCliAgent(r.backend, [{ role: "user", content: prompt }], undefined, {
-          cwd: repoPath,
-          readOnly: true,
-        });
+        const review = await timedRun(
+          { feature: "review", agent: r.name, backend: r.backend, task: `${mode} diff · ${r.lens.split(":")[0]}`, repo: repoPath, batchId },
+          () => runCliAgent(r.backend, [{ role: "user", content: prompt }], undefined, { cwd: repoPath, readOnly: true }),
+        );
         return { id: r.id, name: r.name, lens: r.lens, review, ok: true };
       } catch (e) {
         return { id: r.id, name: r.name, lens: r.lens, review: e instanceof Error ? e.message : "failed", ok: false };

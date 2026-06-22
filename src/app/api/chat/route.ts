@@ -1,7 +1,12 @@
 import { streamChat, type ChatMessage } from "@/lib/ollama";
 import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
+import { timedRun } from "@/lib/runs";
 
 type Backend = "ollama" | CliBackend;
+
+const BACKEND_LABEL: Record<string, string> = {
+  claude: "Claude", codex: "Codex", opencode: "OpenClaw", gemini: "Gemini", ollama: "Local LLM",
+};
 
 export async function POST(request: Request): Promise<Response> {
   let body: { messages?: ChatMessage[]; backend?: Backend; model?: string };
@@ -18,8 +23,12 @@ export async function POST(request: Request): Promise<Response> {
 
   // Subscription / local CLI agents: run the local CLI, return the full answer.
   if (backend === "claude" || backend === "codex" || backend === "opencode" || backend === "gemini") {
+    const task = body.messages[body.messages.length - 1]?.content?.slice(0, 140) ?? "";
     try {
-      const answer = await runCliAgent(backend, body.messages);
+      const answer = await timedRun(
+        { feature: "chat", agent: BACKEND_LABEL[backend] ?? backend, backend, task },
+        () => runCliAgent(backend, body.messages!),
+      );
       return new Response(answer, {
         status: 200,
         headers: { "Content-Type": "text/plain; charset=utf-8" },
