@@ -63,6 +63,32 @@ export function createStore(pool: QueryablePool) {
       return rows as Goal[];
     },
 
+    async addGoal(title: string): Promise<Goal> {
+      const { rows } = await pool.query(
+        `insert into goals (title) values ($1)
+         returning id, title, status, created_at`,
+        [title],
+      );
+      return rows[0] as Goal;
+    },
+
+    async updateGoal(id: number, fields: { title?: string; status?: string }): Promise<Goal | null> {
+      const { rows } = await pool.query(
+        `update goals set
+           title = coalesce($2, title),
+           status = coalesce($3, status)
+         where id = $1
+         returning id, title, status, created_at`,
+        [id, fields.title ?? null, fields.status ?? null],
+      );
+      return (rows[0] as Goal) ?? null;
+    },
+
+    async deleteGoal(id: number): Promise<boolean> {
+      const { rowCount } = await pool.query(`delete from goals where id = $1`, [id]);
+      return (rowCount ?? 0) > 0;
+    },
+
     async searchMessages(term: string, limit = 20): Promise<{ conversation_id: string; content: string }[]> {
       const { rows } = await pool.query(
         `select conversation_id, content from messages
