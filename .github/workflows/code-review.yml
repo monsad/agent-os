@@ -1,0 +1,33 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    name: /10x-impl-review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history for the diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run the review agent
+        id: review
+        uses: ./.github/actions/code-review
+        with:
+          openrouter-api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          pr-title: ${{ github.event.pull_request.title }}
+          pr-body: ${{ github.event.pull_request.body }}
+          base-ref: origin/${{ github.event.pull_request.base.ref }}
+
+      - name: Post review comment on the PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file "${{ steps.review.outputs.comment-path }}"

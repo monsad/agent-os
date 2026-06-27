@@ -1,0 +1,53 @@
+name: "AI code review"
+description: "Run the /10x-impl-review agent on a PR diff and produce a Markdown verdict."
+inputs:
+  openrouter-api-key:
+    description: "OpenRouter API key"
+    required: true
+  model:
+    description: "OpenRouter model slug"
+    required: false
+    default: "deepseek/deepseek-chat-v3.1"
+  pr-title:
+    description: "PR title"
+    required: false
+    default: ""
+  pr-body:
+    description: "PR body"
+    required: false
+    default: ""
+  base-ref:
+    description: "Base ref to diff against"
+    required: false
+    default: "origin/main"
+outputs:
+  comment-path:
+    description: "Path to the generated Markdown review comment"
+    value: ${{ steps.run.outputs.path }}
+runs:
+  using: composite
+  steps:
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+    - name: Install reviewer
+      shell: bash
+      working-directory: packages/code-reviewer
+      run: npm install --no-audit --no-fund
+    - name: Review the diff
+      id: run
+      shell: bash
+      working-directory: packages/code-reviewer
+      env:
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        REVIEW_MODEL: ${{ inputs.model }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        PR_BODY: ${{ inputs.pr-body }}
+      run: |
+        git diff "${{ inputs.base-ref }}...HEAD" > /tmp/pr.diff
+        echo "Diff size: $(wc -l < /tmp/pr.diff) lines"
+        npx tsx src/comment.ts < /tmp/pr.diff > /tmp/review-comment.md
+        echo "----- review comment -----"
+        cat /tmp/review-comment.md
+        echo "path=/tmp/review-comment.md" >> "$GITHUB_OUTPUT"
