@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE, isAuthed, gateEnabled } from "@/lib/auth";
+import { SESSION_COOKIE, verifySession } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login", "/api/login"];
+const PUBLIC_PATHS = ["/login", "/api/auth"];
 
-export function middleware(req: NextRequest): NextResponse {
-  if (!gateEnabled()) return NextResponse.next();
-
+export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl;
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     return NextResponse.next();
   }
 
-  if (isAuthed(req.cookies.get(SESSION_COOKIE)?.value)) {
-    return NextResponse.next();
-  }
+  const userId = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (userId !== null) return NextResponse.next();
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
