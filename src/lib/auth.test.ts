@@ -1,43 +1,60 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { verifyPasscode, isAuthed, gateEnabled, sessionToken, safeEqual, SESSION_COOKIE } from "./auth";
+import {
+  signSession,
+  verifySession,
+  safeEqual,
+  sessionCookie,
+  clearCookie,
+  currentUserId,
+  SESSION_COOKIE,
+} from "./auth";
 
-describe("access gate", () => {
-  const pass = process.env.AGENT_OS_PASSCODE;
-  const token = process.env.AGENT_OS_SESSION_TOKEN;
+describe("session auth", () => {
+  const orig = process.env.AGENT_OS_SESSION_SECRET;
   afterEach(() => {
-    if (pass === undefined) delete process.env.AGENT_OS_PASSCODE;
-    else process.env.AGENT_OS_PASSCODE = pass;
-    if (token === undefined) delete process.env.AGENT_OS_SESSION_TOKEN;
-    else process.env.AGENT_OS_SESSION_TOKEN = token;
+    if (orig === undefined) delete process.env.AGENT_OS_SESSION_SECRET;
+    else process.env.AGENT_OS_SESSION_SECRET = orig;
   });
 
-  it("is open (disabled) when no passcode is configured", () => {
-    delete process.env.AGENT_OS_PASSCODE;
-    expect(gateEnabled()).toBe(false);
-    expect(isAuthed(undefined)).toBe(true);
+  it("signs and verifies a session for a user id", async () => {
+    process.env.AGENT_OS_SESSION_SECRET = "test-secret";
+    const token = await signSession(42);
+    expect(await verifySession(token)).toBe(42);
   });
 
-  it("rejects a wrong passcode and accepts the configured one", () => {
-    process.env.AGENT_OS_PASSCODE = "open-sesame";
-    expect(verifyPasscode("nope")).toBe(false);
-    expect(verifyPasscode("open-sesame")).toBe(true);
+  it("rejects a missing, malformed or tampered cookie", async () => {
+    process.env.AGENT_OS_SESSION_SECRET = "test-secret";
+    expect(await verifySession(undefined)).toBeNull();
+    expect(await verifySession("42.deadbeef")).toBeNull();
+    const token = await signSession(42);
+    expect(await verifySession(token.replace("42.", "43."))).toBeNull(); // swapped user id
   });
 
-  it("authorizes only a request carrying the session token", () => {
-    process.env.AGENT_OS_PASSCODE = "open-sesame";
-    process.env.AGENT_OS_SESSION_TOKEN = "secret-token";
-    expect(isAuthed(undefined)).toBe(false);
-    expect(isAuthed("forged")).toBe(false);
-    expect(isAuthed(sessionToken())).toBe(true);
+  it("verification is secret-dependent (forged secret fails)", async () => {
+    process.env.AGENT_OS_SESSION_SECRET = "secret-a";
+    const token = await signSession(7);
+    process.env.AGENT_OS_SESSION_SECRET = "secret-b";
+    expect(await verifySession(token)).toBeNull();
   });
 
-  it("safeEqual is length-aware and value-aware", () => {
+  it("currentUserId reads the session from request cookies", async () => {
+    process.env.AGENT_OS_SESSION_SECRET = "test-secret";
+    const token = await signSession(5);
+    const req = new Request("http://x", {
+      headers: { cookie: `${SESSION_COOKIE}=${encodeURIComponent(token)}` },
+    });
+    expect(await currentUserId(req)).toBe(5);
+    expect(await currentUserId(new Request("http://x"))).toBeNull();
+  });
+
+  it("safeEqual is length- and value-aware", () => {
     expect(safeEqual("abc", "abc")).toBe(true);
     expect(safeEqual("abc", "abd")).toBe(false);
     expect(safeEqual("abc", "abcd")).toBe(false);
   });
 
-  it("exposes a stable cookie name", () => {
-    expect(SESSION_COOKIE).toBe("agentos_session");
+  it("cookie helpers set and clear the session cookie", () => {
+    expect(sessionCookie("t")).toContain(`${SESSION_COOKIE}=t`);
+    expect(clearCookie()).toContain("Max-Age=0");
   });
 });

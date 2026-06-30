@@ -4,7 +4,8 @@ import { getEnv } from "./env";
 export type QueryablePool = Pick<Pool, "query">;
 
 export type JournalEntry = { id: number; conversation_id: string; summary: string; created_at: string };
-export type Goal = { id: number; title: string; status: string; created_at: string };
+export type Goal = { id: number; user_id: number; title: string; status: string; priority: string; created_at: string };
+export type User = { id: number; username: string; password_hash: string; created_at: string };
 
 export function createStore(pool: QueryablePool) {
   return {
@@ -22,18 +23,50 @@ export function createStore(pool: QueryablePool) {
         content text not null,
         created_at timestamptz default now()
       )`);
-      await pool.query(`create table if not exists goals (
+      await pool.query(`create table if not exists users (
         id bigserial primary key,
-        title text not null,
-        status text not null default 'open',
+        username text unique not null,
+        password_hash text not null,
         created_at timestamptz default now()
       )`);
+      await pool.query(`create table if not exists goals (
+        id bigserial primary key,
+        user_id bigint references users(id),
+        title text not null,
+        status text not null default 'open',
+        priority text not null default 'medium',
+        description text,
+        deadline text,
+        created_at timestamptz default now()
+      )`);
+      // Migrate pre-existing goals tables so per-user + priority columns exist.
+      await pool.query(`alter table goals add column if not exists user_id bigint`);
+      await pool.query(`alter table goals add column if not exists priority text not null default 'medium'`);
+      await pool.query(`alter table goals add column if not exists description text`);
+      await pool.query(`alter table goals add column if not exists deadline text`);
       await pool.query(`create table if not exists journal_entries (
         id bigserial primary key,
         conversation_id text,
         summary text not null,
         created_at timestamptz default now()
       )`);
+    },
+
+    async createUser(username: string, passwordHash: string): Promise<User> {
+      const { rows } = await pool.query(
+        `insert into users (username, password_hash) values ($1, $2)
+         returning id, username, password_hash, created_at`,
+        [username, passwordHash],
+      );
+      return rows[0] as User;
+    },
+
+    async getUserByUsername(username: string): Promise<User | null> {
+      const { rows } = await pool.query(
+        `select id, username, password_hash, created_at from users where username = $1`,
+        [username],
+      );
+      return (rows[0] as User) ?? null;
     },
 
     async insertMessage(conversationId: string, role: string, content: string): Promise<void> {
@@ -56,36 +89,47 @@ export function createStore(pool: QueryablePool) {
       return rows as JournalEntry[];
     },
 
-    async listGoals(): Promise<Goal[]> {
+    async listGoals(userId: number): Promise<Goal[]> {
       const { rows } = await pool.query(
-        `select id, title, status, created_at from goals order by created_at desc`,
+        `select id, user_id, title, status, priority, created_at from goals
+         where user_id = $1 order by created_at desc`,
+        [userId],
       );
       return rows as Goal[];
     },
 
-    async addGoal(title: string): Promise<Goal> {
+    async addGoal(
+      userId: number,
+      fields: { title: string; priority: string; description?: string | null; deadline?: string | null },
+    ): Promise<Goal> {
       const { rows } = await pool.query(
-        `insert into goals (title) values ($1)
-         returning id, title, status, created_at`,
-        [title],
+        `insert into goals (user_id, title, priority, description, deadline)
+         values ($1, $2, $3, $4, $5)
+         returning id, user_id, title, status, priority, created_at`,
+        [userId, fields.title, fields.priority, fields.description ?? null, fields.deadline ?? null],
       );
       return rows[0] as Goal;
     },
 
-    async updateGoal(id: number, fields: { title?: string; status?: string }): Promise<Goal | null> {
+    async updateGoal(
+      userId: number,
+      id: number,
+      fields: { title?: string; status?: string; priority?: string },
+    ): Promise<Goal | null> {
       const { rows } = await pool.query(
         `update goals set
-           title = coalesce($2, title),
-           status = coalesce($3, status)
-         where id = $1
-         returning id, title, status, created_at`,
-        [id, fields.title ?? null, fields.status ?? null],
+           title = coalesce($3, title),
+           status = coalesce($4, status),
+           priority = coalesce($5, priority)
+         where id = $1 and user_id = $2
+         returning id, user_id, title, status, priority, created_at`,
+        [id, userId, fields.title ?? null, fields.status ?? null, fields.priority ?? null],
       );
       return (rows[0] as Goal) ?? null;
     },
 
-    async deleteGoal(id: number): Promise<boolean> {
-      const { rowCount } = await pool.query(`delete from goals where id = $1`, [id]);
+    async deleteGoal(userId: number, id: number): Promise<boolean> {
+      const { rowCount } = await pool.query(`delete from goals where id = $1 and user_id = $2`, [id, userId]);
       return (rowCount ?? 0) > 0;
     },
 
