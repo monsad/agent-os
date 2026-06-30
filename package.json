@@ -12,7 +12,7 @@
     "db:init": "node --experimental-strip-types scripts/init-db.ts"
   },
   "dependencies": {
-    "next": "15.3.0",
+    "next": "15.5.18",
     "pg": "8.13.1",
     "react": "19.0.0",
     "react-dom": "19.0.0"
