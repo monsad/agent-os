@@ -18,17 +18,21 @@ cockpit over their own agents and repositories.
 ## 3. MVP scope (the working flow)
 
 1. **Live chat** with a local model (Ollama, OpenAI-compatible `/v1`, streaming).
-2. **Goals** — full CRUD: create, list, update status, delete (`/api/goals`).
+2. **Goals** — full CRUD scoped to the signed-in user: create, list, update, delete
+   (`/api/goals`). Each user sees only their own goals.
 3. **Memory / knowledge graph** — conversations and notes distilled via *graphify*.
-4. **Structured store** — Ghost (Postgres) for goals, journal, message search.
+4. **Structured store** — Ghost (Postgres) for users, goals, journal, message search.
 5. **Multi-agent fan-out** — one task → many agents (`council` / `delegate` / `review`)
    so the operator always gets a broad opinion, logged for observability.
 6. **Repository attach** — point agents at a real repo so they work on shared code.
-7. **Access control** — passcode gate at `/login`, enforced by middleware on every
-   page and API route.
+7. **Per-user auth** — register / log in at `/login`; a signed session cookie ties
+   every request to a user; middleware gates every page and API route.
 
 ## 4. Business logic (beyond CRUD)
 
+- **Goal priority suggestion** (`lib/priority.ts`) — on create, a goal's priority is
+  derived from its name, description and deadline (near deadline → high; urgency
+  keywords → high/medium; else low). Deterministic and unit-tested.
 - Fan-out orchestration with a single `runCliAgent` choke point and per-run timeouts.
 - Run log (`lib/runs.ts`) with timed runs and head-to-head batches — observability.
 - AI code-review pipeline (`packages/code-reviewer`) that scores a diff on six
