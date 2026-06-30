@@ -1,7 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 
-type Goal = { id: number; title: string; status: string };
+type Goal = { id: number; title: string; status: string; priority?: string };
+
+const PRIORITY_COLOR: Record<string, string> = {
+  high: "text-red-400",
+  medium: "text-amber-400",
+  low: "text-neutral-500",
+};
 
 export function GoalsPanel() {
   const [goals, setGoals] = useState<Goal[] | null>(null);
@@ -81,6 +87,14 @@ export function GoalsPanel() {
           <span className={g.status === "done" ? "flex-1 text-neutral-500 line-through" : "flex-1"}>
             {g.title}
           </span>
+          {g.priority && (
+            <span
+              className={`text-[10px] uppercase ${PRIORITY_COLOR[g.priority] ?? "text-neutral-500"}`}
+              title={`priority: ${g.priority}`}
+            >
+              {g.priority}
+            </span>
+          )}
           <button
             onClick={() => remove(g)}
             aria-label="Delete goal"

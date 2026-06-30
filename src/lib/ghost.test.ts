@@ -39,32 +39,42 @@ describe("ghost store", () => {
     expect(await store.isAvailable()).toBe(false);
   });
 
-  it("addGoal inserts the title as a bound parameter and returns the row", async () => {
-    const pool = fakePool([{ id: 7, title: "ship", status: "open" }]);
+  it("addGoal binds the owner, title and priority and returns the row", async () => {
+    const pool = fakePool([{ id: 7, user_id: 1, title: "ship", status: "open", priority: "high" }]);
     const store = createStore(pool as never);
-    const goal = await store.addGoal("ship");
+    const goal = await store.addGoal(1, { title: "ship", priority: "high" });
     const [sql, params] = pool.query.mock.calls.at(-1)!;
     expect(String(sql)).toMatch(/insert into goals/i);
-    expect(params).toEqual(["ship"]);
-    expect(goal).toEqual({ id: 7, title: "ship", status: "open" });
+    expect(params).toEqual([1, "ship", "high", null, null]);
+    expect(goal).toEqual({ id: 7, user_id: 1, title: "ship", status: "open", priority: "high" });
   });
 
-  it("updateGoal coalesces partial fields and returns null when no row matches", async () => {
+  it("updateGoal is scoped to the owner and coalesces partial fields", async () => {
     const pool = fakePool([]);
     const store = createStore(pool as never);
-    const result = await store.updateGoal(7, { status: "done" });
+    const result = await store.updateGoal(1, 7, { status: "done" });
     const [sql, params] = pool.query.mock.calls.at(-1)!;
     expect(String(sql)).toMatch(/update goals set/i);
-    expect(params).toEqual([7, null, "done"]);
+    expect(String(sql)).toMatch(/user_id = \$2/);
+    expect(params).toEqual([7, 1, null, "done", null]);
     expect(result).toBeNull();
   });
 
-  it("deleteGoal reports whether a row was removed", async () => {
+  it("deleteGoal only removes the caller's own goal", async () => {
     const pool = { query: vi.fn(async (..._args: unknown[]) => ({ rows: [] as unknown[], rowCount: 1 })) };
     const store = createStore(pool as never);
-    expect(await store.deleteGoal(7)).toBe(true);
+    expect(await store.deleteGoal(1, 7)).toBe(true);
     const [sql, params] = pool.query.mock.calls.at(-1)!;
-    expect(String(sql)).toMatch(/delete from goals/i);
-    expect(params).toEqual([7]);
+    expect(String(sql)).toMatch(/delete from goals where id = \$1 and user_id = \$2/i);
+    expect(params).toEqual([7, 1]);
+  });
+
+  it("getUserByUsername binds the username and returns null when absent", async () => {
+    const pool = fakePool([]);
+    const store = createStore(pool as never);
+    expect(await store.getUserByUsername("alice")).toBeNull();
+    const [sql, params] = pool.query.mock.calls.at(-1)!;
+    expect(String(sql)).toMatch(/from users where username = \$1/i);
+    expect(params).toEqual(["alice"]);
   });
 });
