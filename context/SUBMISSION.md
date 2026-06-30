@@ -18,17 +18,18 @@ deadline: "2026-07-05 (1. termin — z wyróżnieniem)"
 
 | Wymóg | Dowód w repo |
 |---|---|
-| Kontrola dostępu | `src/middleware.ts` + `/login` + `/api/login` + `src/lib/auth.ts` |
-| CRUD | `goals`: `src/app/api/goals/route.ts` (GET/POST/PATCH/DELETE) + `GoalsPanel.tsx` |
-| Logika biznesowa | fan-out `src/app/api/{council,delegate,review}` + `src/lib/cliAgent.ts` |
-| Dokumenty kontekstowe | `docs/prd.md`, `docs/roadmap.md`, `docs/infrastructure.md` |
-| Testy (perspektywa usera) | 60 testów (`npm test`) + Playwright e2e |
-| CI/CD build + jakość | `.github/workflows/ci.yml` — **zielony** (tsc + test + build) |
+| **Auth per-user** (loguje się user, widzi swoje zasoby) | `/login` (rejestracja+logowanie) → `src/app/api/auth/*` · sesja HMAC `src/lib/auth.ts` · hasła scrypt `src/lib/password.ts` · middleware `src/middleware.ts` · goals przypięte do `user_id` |
+| **CRUD** (add/list/edit/delete) | `goals`: `src/app/api/goals/route.ts` (GET/POST/PATCH/DELETE) + `GoalsPanel.tsx` |
+| **Logika biznesowa** (auto-priorytet z nazwy/opisu/terminu) | `src/lib/priority.ts` → `suggestPriority()`, wpięte w `POST /api/goals` |
+| **Dokumenty kontekstowe** | `docs/prd.md`, `docs/roadmap.md`, `docs/infrastructure.md`, `docs/test-plan.md` |
+| **Testy adresujące ryzyko z test-planu** | `docs/test-plan.md` (R1–R5) → 70 testów (`npm test`) + Playwright e2e |
+| **CI/CD build + jakość** | `.github/workflows/ci.yml` — **zielony** (tsc + test + build) |
 
 **Screeny do wgrania (Builder):**
-1. Zielony CI: https://github.com/monsad/agent-os/pull/2/checks → job „build + test" (✓)
+1. Zielony CI: https://github.com/monsad/agent-os/actions (run „CI" na `main`, job „build + test" ✓)
 2. Struktura projektu (drzewo plików: `docs/`, `src/`, `.github/workflows/`)
-3. Ekran logowania `/login` + lista goals z edycją/usuwaniem
+3. `/login` (logowanie/rejestracja) + lista goals **z priorytetem** (high/medium/low) i edycją/usuwaniem
+4. `docs/test-plan.md` (tabela ryzyk R1–R5 → testy)
 
 ---
 

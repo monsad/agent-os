@@ -22,19 +22,21 @@ orchestrates processes and repositories on the host, so a cloud deploy is out of
 
 ## Access control
 
-Passcode gate. `src/middleware.ts` enforces `lib/auth.ts` on every page and API route;
-unauthenticated browsers are redirected to `/login`, API calls get `401`. The gate is
-active whenever `AGENT_OS_PASSCODE` is set and open otherwise (local dev).
+Per-user auth. Users register / log in at `/login` (`/api/auth/register` · `login` ·
+`logout`). Passwords are salted-`scrypt` hashed (`lib/password.ts`, Node-only). On
+success a signed session cookie (`<userId>.<HMAC-SHA256>`, `lib/auth.ts`) is issued.
+`src/middleware.ts` verifies that signature on every page and API route — edge-safe via
+Web Crypto, no DB lookup — redirecting browsers to `/login` and returning `401` to APIs.
+Goals are scoped to the session user, so each user only ever sees their own resources.
 
 ## Configuration (`.env`)
 
 | Var | Purpose |
 |---|---|
 | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | Local chat model |
-| `GHOST_DATABASE_URL` | Postgres store (optional) |
+| `GHOST_DATABASE_URL` | Postgres store (users, goals, journal) |
 | `GRAPHIFY_NOTES_DIR` | Memory notes location |
-| `AGENT_OS_PASSCODE` | Enables the access gate |
-| `AGENT_OS_SESSION_TOKEN` | Opaque session-cookie value (random secret) |
+| `AGENT_OS_SESSION_SECRET` | HMAC key signing session cookies (random secret) |
 | `OPENROUTER_API_KEY` | Code-review agent (CI secret) |
 
 ## CI/CD
