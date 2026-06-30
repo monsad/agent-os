@@ -38,4 +38,33 @@ describe("ghost store", () => {
     const store = createStore(pool as never);
     expect(await store.isAvailable()).toBe(false);
   });
+
+  it("addGoal inserts the title as a bound parameter and returns the row", async () => {
+    const pool = fakePool([{ id: 7, title: "ship", status: "open" }]);
+    const store = createStore(pool as never);
+    const goal = await store.addGoal("ship");
+    const [sql, params] = pool.query.mock.calls.at(-1)!;
+    expect(String(sql)).toMatch(/insert into goals/i);
+    expect(params).toEqual(["ship"]);
+    expect(goal).toEqual({ id: 7, title: "ship", status: "open" });
+  });
+
+  it("updateGoal coalesces partial fields and returns null when no row matches", async () => {
+    const pool = fakePool([]);
+    const store = createStore(pool as never);
+    const result = await store.updateGoal(7, { status: "done" });
+    const [sql, params] = pool.query.mock.calls.at(-1)!;
+    expect(String(sql)).toMatch(/update goals set/i);
+    expect(params).toEqual([7, null, "done"]);
+    expect(result).toBeNull();
+  });
+
+  it("deleteGoal reports whether a row was removed", async () => {
+    const pool = { query: vi.fn(async (..._args: unknown[]) => ({ rows: [] as unknown[], rowCount: 1 })) };
+    const store = createStore(pool as never);
+    expect(await store.deleteGoal(7)).toBe(true);
+    const [sql, params] = pool.query.mock.calls.at(-1)!;
+    expect(String(sql)).toMatch(/delete from goals/i);
+    expect(params).toEqual([7]);
+  });
 });
