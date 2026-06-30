@@ -60,7 +60,7 @@ describe("ghost store", () => {
   });
 
   it("deleteGoal reports whether a row was removed", async () => {
-    const pool = { query: vi.fn(async () => ({ rows: [], rowCount: 1 })) };
+    const pool = { query: vi.fn(async (..._args: unknown[]) => ({ rows: [] as unknown[], rowCount: 1 })) };
     const store = createStore(pool as never);
     expect(await store.deleteGoal(7)).toBe(true);
     const [sql, params] = pool.query.mock.calls.at(-1)!;

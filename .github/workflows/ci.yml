@@ -23,8 +23,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Type-check (whole project, incl. tests)
+        run: npx tsc --noEmit
+
       - name: Unit tests
         run: npm test
 
-      - name: Build (type-check + production build)
+      - name: Build (production build)
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
         run: npm run build
