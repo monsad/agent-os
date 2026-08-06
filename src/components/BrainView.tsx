@@ -18,6 +18,30 @@ export function BrainView() {
   const [running, setRunning] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [question, setQuestion] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [answer, setAnswer] = useState<string | null>(null);
+
+  // Recall: question in, cited answer out — read-only, atoms/threads only.
+  async function ask() {
+    const q = question.trim();
+    if (!q) return;
+    setAsking(true);
+    setAnswer(null);
+    try {
+      const res = await fetch("/api/brain/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: q }),
+      });
+      const d = await res.json();
+      setAnswer(res.ok ? d.answer : d.error ?? "ask failed");
+    } catch {
+      setAnswer("ask failed — is the dev server running?");
+    } finally {
+      setAsking(false);
+    }
+  }
 
   function refresh() {
     fetch("/api/brain").then((r) => r.json()).then(setStatus).catch(() => {});
@@ -142,6 +166,36 @@ export function BrainView() {
         {running && <p className="mono mt-3 text-xs text-neutral-500">Claude is refining intake → atoms… this can take a few minutes.</p>}
         {err && <p className="mt-3 text-sm text-amber-300">{err}</p>}
         {summary && <p className="mt-3 rounded-lg bg-black/20 p-3 text-sm text-neutral-200">{summary}</p>}
+      </div>
+
+      <div className="panel rounded-2xl p-5">
+        <p className="eyebrow mb-2">Ask your brain</p>
+        <p className="mb-2 text-sm text-neutral-400">
+          Answers come only from your atoms — every claim cites its note. No notes, no answer.
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") void ask(); }}
+            placeholder="What do I believe about…?"
+            disabled={asking}
+            className="w-full rounded-lg border border-white/20 bg-black/30 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-cyan-400/70 focus:bg-black/45 disabled:opacity-50"
+          />
+          <button
+            onClick={() => void ask()}
+            disabled={asking || !question.trim()}
+            className="shrink-0 rounded-lg border border-cyan-400/40 bg-cyan-400/15 px-4 py-2 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/25 disabled:opacity-40"
+          >
+            {asking ? "Recalling…" : "Ask"}
+          </button>
+        </div>
+        {asking && <p className="mono mt-3 text-xs text-neutral-500">Searching atoms + threads…</p>}
+        {answer && (
+          <pre className="mt-3 whitespace-pre-wrap break-words rounded-lg bg-black/20 p-3 text-[13px] leading-relaxed text-neutral-200">
+            {answer}
+          </pre>
+        )}
       </div>
 
       {status?.latestBriefing && (
