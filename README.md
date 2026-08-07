@@ -10,9 +10,25 @@ locks your own instance; it is **not** multi-tenant isolation. Any account that 
 log in can read and act on everything in the instance — conversations, notes, the
 attached repo. Only goals are scoped per user.
 
-Do not expose this to the internet or share an instance between people. There is no
-rate limiting, no session revocation, and `/api/repo` will point agents at any
-directory on the host by design.
+Do not expose this to the internet or share an instance between people.
+
+What the app does enforce:
+
+- **`AGENT_OS_SESSION_SECRET` is required.** There is no fallback — a shipped
+  default would be a publicly known signing key. Without it the app refuses to
+  sign or verify sessions rather than accepting forgeable ones.
+- **Registration closes after the first account.** `/login` doubles as first-run
+  setup; once an operator exists, sign-up is refused unless you set
+  `AGENT_OS_ALLOW_REGISTRATION=true`.
+- **Login is rate limited** — per client address *and* per username, so neither
+  spraying one account from many addresses nor many accounts from one address
+  gets unlimited guesses.
+- **Sessions expire after 7 days**, enforced server-side: the timestamp is inside
+  the signature, so a stolen cookie can't outlive it. There is still no
+  revocation list — changing `AGENT_OS_SESSION_SECRET` invalidates everything.
+- **Only git repositories can be attached** via `/api/repo` (plus the app's own
+  `data/` dir). Agents read whatever directory is attached, so pointing it at
+  `~/.ssh` or `~/Documents` is refused.
 
 ## Bring your own credentials
 
@@ -29,8 +45,8 @@ Nothing here is resold, proxied, or phoned home:
 Swap any of them for your own endpoint or model — every one is an env var. Keys stay
 in `.env` (gitignored) and go only to the provider you picked.
 
-Set `AGENT_OS_SESSION_SECRET` to a long random string before first run; the built-in
-fallback is a publicly known development value and anyone can forge a session with it.
+Generate `AGENT_OS_SESSION_SECRET` before first run — `openssl rand -hex 32`. The app
+will not start a session without it.
 
 ## Prerequisites
 - Node 18+
