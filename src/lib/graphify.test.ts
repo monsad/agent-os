@@ -29,6 +29,25 @@ describe("graphify runner", () => {
     );
   });
 
+  it("rebuild extracts, then clusters to render graph.html", async () => {
+    const spawn = fakeSpawn("");
+    await rebuild("./data/notes", spawn as never);
+
+    expect(spawn).toHaveBeenCalledTimes(2);
+    const [, extractArgs] = spawn.mock.calls[0] as unknown as [string, string[]];
+    const [, clusterArgs] = spawn.mock.calls[1] as unknown as [string, string[]];
+
+    expect(extractArgs).toContain("--update");
+    expect(clusterArgs[0]).toBe("cluster-only");
+
+    // --no-viz suppresses graph.html; --html isn't a real graphify flag and
+    // hangs the CLI. Either one silently leaves the UI with no graph.
+    for (const args of [extractArgs, clusterArgs]) {
+      expect(args).not.toContain("--no-viz");
+      expect(args).not.toContain("--html");
+    }
+  });
+
   it("rebuild rejects on non-zero exit", async () => {
     const spawn = fakeSpawn("boom", 1);
     await expect(rebuild("./data/notes", spawn as never)).rejects.toThrow(/graphify/);
