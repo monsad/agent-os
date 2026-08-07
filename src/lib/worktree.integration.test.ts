@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createWorktree, removeWorktree, diffWorktree, applyWorktree, listStaleWorktrees } from "./worktree";
@@ -58,6 +58,26 @@ describe("worktree — real git integration", () => {
 
     const mainDiff = git(["diff", "HEAD"], repo);
     expect(mainDiff).toBe("");
+  });
+
+  it("diffWorktree includes a brand-new (untracked) file, not just edits to tracked ones", async () => {
+    repo = initRepo();
+    const wt = await createWorktree(repo, "it-run-new-file");
+    writeFileSync(path.join(wt.path, "NOTES.md"), "a fact worth keeping\n");
+
+    const diff = await diffWorktree(wt);
+    expect(diff).toContain("NOTES.md");
+    expect(diff).toContain("a fact worth keeping");
+  });
+
+  it("applyWorktree creates a brand-new file in the main repo, not just edits", async () => {
+    repo = initRepo();
+    const wt = await createWorktree(repo, "it-run-apply-new-file");
+    writeFileSync(path.join(wt.path, "NOTES.md"), "a fact worth keeping\n");
+
+    await applyWorktree(repo, wt);
+
+    expect(readFileSync(path.join(repo, "NOTES.md"), "utf-8")).toBe("a fact worth keeping\n");
   });
 
   it("applyWorktree replays uncommitted worktree edits onto the main repo", async () => {
