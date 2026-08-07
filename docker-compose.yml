@@ -1,0 +1,30 @@
+# Postgres for Agent OS — `docker compose up -d` and the store is ready.
+#
+# Only the database is containerised. The app itself stays on the host on
+# purpose: its whole job is driving your local `claude` / `codex` / `opencode`
+# CLIs under your own logins, plus your Ollama and your git repos. Those are
+# native host binaries and host credentials, so a Linux container cannot run
+# them — containerising the app would break the core feature.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: agentos-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: agentos
+      POSTGRES_DB: agentos
+    ports:
+      - "5439:5432"
+    volumes:
+      - agentos-pgdata:/var/lib/postgresql/data
+      # Runs once, only when the volume is empty — creates every table the app needs.
+      - ./docker/init-schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agentos"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  agentos-pgdata:

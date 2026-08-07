@@ -89,7 +89,13 @@ export async function removeWorktree(
   await runProcess(spawn, "git", ["branch", "-D", wt.branch], repoPath);
 }
 
+// `git diff HEAD` alone is silent about brand-new files — untracked paths
+// aren't diffed against anything. `-N` (intent-to-add) marks them tracked
+// with empty content first, so their full body shows up as an "added" hunk.
+// Safe: this only touches the throwaway worktree's index, which either gets
+// applied-then-discarded or discarded outright.
 export async function diffWorktree(wt: Worktree, spawn: SpawnFn = nodeSpawn): Promise<string> {
+  await runProcess(spawn, "git", ["add", "-A", "-N"], wt.path);
   return runProcess(spawn, "git", ["diff", "HEAD"], wt.path);
 }
 
