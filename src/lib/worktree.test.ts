@@ -7,21 +7,50 @@ import {
   createWorktree,
   removeWorktree,
   diffWorktree,
+  applyWorktree,
   parseWorktreeList,
   listStaleWorktrees,
 } from "./worktree";
 
 function fakeSpawn(stdout: string, code = 0) {
   return vi.fn(() => {
-    const proc = new EventEmitter() as EventEmitter & { stdout: EventEmitter; stderr: EventEmitter };
+    const proc = new EventEmitter() as EventEmitter & {
+      stdout: EventEmitter; stderr: EventEmitter;
+      stdin: { write: (c: Buffer | string) => void; end: () => void };
+    };
     proc.stdout = new EventEmitter();
     proc.stderr = new EventEmitter();
+    proc.stdin = { write: () => {}, end: () => {} };
     queueMicrotask(() => {
       proc.stdout.emit("data", Buffer.from(stdout));
       proc.emit("close", code);
     });
     return proc;
   });
+}
+
+// Same as fakeSpawn, but each queued response advances to the next call —
+// lets a single fake spawn drive a sequence of different git subcommands.
+function fakeSpawnSequence(responses: { stdout: string; code?: number }[]) {
+  let i = 0;
+  const stdinChunks: Buffer[] = [];
+  const spawn = vi.fn(() => {
+    const r = responses[Math.min(i, responses.length - 1)];
+    i++;
+    const proc = new EventEmitter() as EventEmitter & {
+      stdout: EventEmitter; stderr: EventEmitter;
+      stdin: { write: (c: Buffer | string) => void; end: () => void };
+    };
+    proc.stdout = new EventEmitter();
+    proc.stderr = new EventEmitter();
+    proc.stdin = { write: (c) => stdinChunks.push(Buffer.from(c)), end: () => {} };
+    queueMicrotask(() => {
+      proc.stdout.emit("data", Buffer.from(r.stdout));
+      proc.emit("close", r.code ?? 0);
+    });
+    return proc;
+  });
+  return { spawn, stdin: () => Buffer.concat(stdinChunks).toString() };
 }
 
 describe("createWorktree", () => {
@@ -76,6 +105,26 @@ describe("diffWorktree", () => {
     const out = await diffWorktree({ path: "/wt/x", branch: "agent-run/x", runId: "x" }, spawn as never);
     expect(out).toContain("+hello");
     expect(spawn).toHaveBeenCalledWith("git", ["diff", "HEAD"], expect.objectContaining({ cwd: "/wt/x" }));
+  });
+});
+
+describe("applyWorktree", () => {
+  it("pipes the worktree's diff to `git apply` in the main repo", async () => {
+    const patch = "diff --git a/x b/x\n+hello\n";
+    const { spawn, stdin } = fakeSpawnSequence([{ stdout: patch }, { stdout: "" }]);
+    await applyWorktree("/repos/my-app", { path: "/wt/x", branch: "agent-run/x", runId: "x" }, spawn as never);
+
+    expect(spawn).toHaveBeenNthCalledWith(1, "git", ["diff", "HEAD"], expect.objectContaining({ cwd: "/wt/x" }));
+    expect(spawn).toHaveBeenNthCalledWith(2, "git", ["apply"], expect.objectContaining({ cwd: "/repos/my-app" }));
+    expect(stdin()).toBe(patch);
+  });
+
+  it("rejects without calling git apply when the worktree has no changes", async () => {
+    const { spawn } = fakeSpawnSequence([{ stdout: "" }]);
+    await expect(
+      applyWorktree("/repos/my-app", { path: "/wt/x", branch: "agent-run/x", runId: "x" }, spawn as never),
+    ).rejects.toThrow(/no changes to apply/);
+    expect(spawn).toHaveBeenCalledTimes(1);
   });
 });
 

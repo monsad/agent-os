@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createWorktree, removeWorktree, diffWorktree, listStaleWorktrees } from "./worktree";
+import { createWorktree, removeWorktree, diffWorktree, applyWorktree, listStaleWorktrees } from "./worktree";
 
 // Real git, real filesystem — worktree has too many sharp edges (branch name
 // collisions, lock files, "already checked out" errors) to trust to mocks alone.
@@ -58,6 +58,29 @@ describe("worktree — real git integration", () => {
 
     const mainDiff = git(["diff", "HEAD"], repo);
     expect(mainDiff).toBe("");
+  });
+
+  it("applyWorktree replays uncommitted worktree edits onto the main repo", async () => {
+    repo = initRepo();
+    const wt = await createWorktree(repo, "it-run-apply");
+    writeFileSync(path.join(wt.path, "README.md"), "hello\nagent applied this\n");
+
+    await applyWorktree(repo, wt);
+
+    const applied = git(["diff", "HEAD"], repo);
+    expect(applied).toContain("agent applied this");
+    // the worktree's own copy is untouched by applying it elsewhere
+    const wtDiff = git(["diff", "HEAD"], wt.path);
+    expect(wtDiff).toContain("agent applied this");
+  });
+
+  it("applyWorktree rejects when the main repo has a conflicting local change", async () => {
+    repo = initRepo();
+    const wt = await createWorktree(repo, "it-run-apply-conflict");
+    writeFileSync(path.join(wt.path, "README.md"), "hello\nfrom the agent\n");
+    writeFileSync(path.join(repo, "README.md"), "hello\nfrom the human, first\n");
+
+    await expect(applyWorktree(repo, wt)).rejects.toThrow();
   });
 
   it("removeWorktree cleans up the directory and the branch", async () => {

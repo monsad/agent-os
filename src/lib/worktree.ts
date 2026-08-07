@@ -27,9 +27,10 @@ function runProcess(
   args: string[],
   cwd: string,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  stdin?: string,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(cmd, args, { cwd, stdio: [stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"] });
     let out = "";
     let err = "";
     let settled = false;
@@ -54,6 +55,11 @@ function runProcess(
     proc.on("close", (code) =>
       finish(() => (code === 0 ? resolve(out) : reject(new Error(`${cmd} exited ${code}: ${err || out}`)))),
     );
+
+    if (stdin !== undefined) {
+      proc.stdin?.write(stdin);
+      proc.stdin?.end();
+    }
   });
 }
 
@@ -85,6 +91,15 @@ export async function removeWorktree(
 
 export async function diffWorktree(wt: Worktree, spawn: SpawnFn = nodeSpawn): Promise<string> {
   return runProcess(spawn, "git", ["diff", "HEAD"], wt.path);
+}
+
+// Agent edits in a worktree are typically uncommitted (acceptEdits just writes
+// files), so they aren't reachable via `git checkout <branch>` — we take the
+// diff and apply it as a patch onto the main repo's working tree instead.
+export async function applyWorktree(repoPath: string, wt: Worktree, spawn: SpawnFn = nodeSpawn): Promise<void> {
+  const diff = await diffWorktree(wt, spawn);
+  if (!diff.trim()) throw new Error("worktree has no changes to apply");
+  await runProcess(spawn, "git", ["apply"], repoPath, DEFAULT_TIMEOUT_MS, diff);
 }
 
 export function parseWorktreeList(porcelain: string): { path: string; branch: string }[] {
