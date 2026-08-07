@@ -2,6 +2,7 @@ import { getStore } from "@/lib/ghost";
 import { hashPassword } from "@/lib/password";
 import { signSession, sessionCookie } from "@/lib/auth";
 import { rateLimit, clientKey } from "@/lib/rateLimit";
+import { readJson, invalidJson } from "@/lib/http";
 
 const MIN_PASSWORD_LENGTH = 12;
 const MAX_ATTEMPTS = 5;
@@ -17,12 +18,8 @@ function registrationForcedOpen(): boolean {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { username?: string; password?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ username?: string; password?: string }>(request);
+  if (!body) return invalidJson();
 
   const { ok, retryAfterSec } = rateLimit(clientKey(request, "register"), MAX_ATTEMPTS, WINDOW_MS);
   if (!ok) {

@@ -1,16 +1,13 @@
 import { applyWorktree, removeWorktree } from "@/lib/worktree";
 import { getBatch, deleteBatch } from "@/lib/variantRuns";
+import { readJson, invalidJson } from "@/lib/http";
 
 // Applies one winning variant's diff onto the main repo, then tears down
 // every worktree in the batch — winner included, since its job is done
 // once the patch has landed in the real working tree.
 export async function POST(request: Request): Promise<Response> {
-  let body: { batchId?: string; winnerId?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ batchId?: string; winnerId?: string }>(request);
+  if (!body) return invalidJson();
   const { batchId, winnerId } = body;
   if (!batchId || !winnerId) return Response.json({ error: "batchId and winnerId required" }, { status: 400 });
 

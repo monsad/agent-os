@@ -1,29 +1,19 @@
 import { getRepo } from "@/lib/repo";
-import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
+import { runCliAgent } from "@/lib/cliAgent";
+import { selectAgents } from "@/lib/roster";
 import { timedRun, newBatchId } from "@/lib/runs";
-
-// Gemini is excluded: Google retired the free Gemini Code Assist CLI tier for
-// individuals (IneligibleTierError). Add it back if a GEMINI_API_KEY is set up.
-const COUNCIL: { id: string; name: string; backend: CliBackend }[] = [
-  { id: "claude", name: "Claude", backend: "claude" },
-  { id: "codex", name: "Codex", backend: "codex" },
-  { id: "openclaw", name: "OpenClaw", backend: "opencode" },
-];
+import { readJson, invalidJson } from "@/lib/http";
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { question?: string; agents?: string[] };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ question?: string; agents?: string[] }>(request);
+  if (!body) return invalidJson();
   const question = body.question?.trim();
   if (!question) return Response.json({ error: "question required" }, { status: 400 });
 
   const repoPath = getRepo().repoPath;
   if (!repoPath) return Response.json({ error: "no_repo" }, { status: 400 });
 
-  const selected = body.agents?.length ? COUNCIL.filter((c) => body.agents!.includes(c.id)) : COUNCIL;
+  const selected = selectAgents(body.agents);
   const messages = [{ role: "user", content: question }];
   const batchId = newBatchId();
 

@@ -1,14 +1,11 @@
 import { removeWorktree } from "@/lib/worktree";
 import { getBatch, deleteBatch } from "@/lib/variantRuns";
+import { readJson, invalidJson } from "@/lib/http";
 
 // Tears down every worktree in a batch without applying anything.
 export async function POST(request: Request): Promise<Response> {
-  let body: { batchId?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ batchId?: string }>(request);
+  if (!body) return invalidJson();
   const { batchId } = body;
   if (!batchId) return Response.json({ error: "batchId required" }, { status: 400 });
 

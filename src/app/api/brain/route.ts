@@ -1,16 +1,12 @@
 import { initBrain, brainStatus, captureRaw } from "@/lib/brain";
+import { readJson } from "@/lib/http";
 
 export async function GET(): Promise<Response> {
   return Response.json(brainStatus());
 }
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { action?: string; text?: string };
-  try {
-    body = await request.json();
-  } catch {
-    body = {};
-  }
+  const body = (await readJson<{ action?: string; text?: string }>(request)) ?? {};
   if (body.action === "init") {
     await initBrain();
     return Response.json(brainStatus());
