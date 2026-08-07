@@ -69,6 +69,11 @@ export function createStore(pool: QueryablePool) {
       return (rows[0] as User) ?? null;
     },
 
+    async countUsers(): Promise<number> {
+      const { rows } = await pool.query(`select count(*)::int as n from users`);
+      return (rows[0] as { n: number }).n;
+    },
+
     async insertMessage(conversationId: string, role: string, content: string): Promise<void> {
       await pool.query(
         `insert into conversations (id) values ($1) on conflict (id) do nothing`,
