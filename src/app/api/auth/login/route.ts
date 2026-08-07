@@ -2,17 +2,14 @@ import { getStore } from "@/lib/ghost";
 import { verifyPassword } from "@/lib/password";
 import { signSession, sessionCookie } from "@/lib/auth";
 import { rateLimit, resetRateLimit, clientKey } from "@/lib/rateLimit";
+import { readJson, invalidJson } from "@/lib/http";
 
 const MAX_ATTEMPTS = 10;
 const WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { username?: string; password?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ username?: string; password?: string }>(request);
+  if (!body) return invalidJson();
 
   const username = body.username?.trim();
   const password = body.password ?? "";

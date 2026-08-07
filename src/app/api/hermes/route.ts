@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { readJson, invalidJson } from "@/lib/http";
 
 // Whitelisted, read-only hermes subcommands — none of these invoke the model,
 // so the control panel works even while the model provider is misconfigured.
@@ -28,12 +29,8 @@ function stripAnsi(s: string): string {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { cmd?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ cmd?: string }>(request);
+  if (!body) return invalidJson();
   const args = body.cmd ? COMMANDS[body.cmd] : undefined;
   if (!args) return Response.json({ error: "unknown command" }, { status: 400 });
 

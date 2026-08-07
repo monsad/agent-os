@@ -1,6 +1,7 @@
 import { streamChat, type ChatMessage } from "@/lib/ollama";
 import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
 import { timedRun } from "@/lib/runs";
+import { readJson, invalidJson } from "@/lib/http";
 
 type Backend = "ollama" | CliBackend;
 
@@ -9,12 +10,8 @@ const BACKEND_LABEL: Record<string, string> = {
 };
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { messages?: ChatMessage[]; backend?: Backend; model?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ messages?: ChatMessage[]; backend?: Backend; model?: string }>(request);
+  if (!body) return invalidJson();
   if (!Array.isArray(body.messages) || body.messages.length === 0) {
     return Response.json({ error: "messages required" }, { status: 400 });
   }

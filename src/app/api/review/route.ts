@@ -1,18 +1,28 @@
 import { spawn } from "node:child_process";
 import { getRepo } from "@/lib/repo";
-import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
+import { runCliAgent } from "@/lib/cliAgent";
+import { CLI_ROSTER } from "@/lib/roster";
 import { timedRun, newBatchId } from "@/lib/runs";
+import { readJson, invalidJson } from "@/lib/http";
 
 // Heterogeneous reviewers — each agent gets a DIFFERENT lens, which is the
 // whole point: four reviewers with the same prompt is one reviewer with a
 // bigger bill; different lenses surface bugs no single pass would.
 // Gemini excluded — Google retired the free Gemini Code Assist CLI tier. Its
 // readability/tests lens is folded into Claude's correctness lens.
-const REVIEWERS: { id: string; name: string; backend: CliBackend; lens: string }[] = [
-  { id: "claude", name: "Claude", backend: "claude", lens: "correctness & logic bugs: off-by-one, null/undefined, bad error handling, broken edge cases, wrong control flow — and test changes that weaken or delete assertions to fake a green check" },
-  { id: "codex", name: "Codex", backend: "codex", lens: "security: injection, secrets in code, unsafe/untrusted input, auth mistakes, and untrusted text flowing into an LLM/prompt" },
-  { id: "openclaw", name: "OpenClaw", backend: "opencode", lens: "architecture & simplification: duplication, dead code, over-engineering, something that already exists, needless complexity" },
-];
+// Membership comes from the shared roster; the lens is this feature's own
+// concern — each agent reviews the same diff through a different one, because
+// different lenses surface bugs no single pass would.
+const LENSES: Record<string, string> = {
+  claude:
+    "correctness & logic bugs: off-by-one, null/undefined, bad error handling, broken edge cases, wrong control flow — and test changes that weaken or delete assertions to fake a green check",
+  codex:
+    "security: injection, secrets in code, unsafe/untrusted input, auth mistakes, and untrusted text flowing into an LLM/prompt",
+  openclaw:
+    "architecture & simplification: duplication, dead code, over-engineering, something that already exists, needless complexity",
+};
+
+const REVIEWERS = CLI_ROSTER.map((a) => ({ ...a, lens: LENSES[a.id] ?? "general code review" }));
 
 const MAX_DIFF = 16000;
 
@@ -34,12 +44,8 @@ function gitDiff(repo: string, mode: string, ref?: string): Promise<string> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { mode?: string; ref?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ mode?: string; ref?: string }>(request);
+  if (!body) return invalidJson();
   const repoPath = getRepo().repoPath;
   if (!repoPath) return Response.json({ error: "no_repo" }, { status: 400 });
 
