@@ -1,15 +1,12 @@
 import { getStore } from "@/lib/ghost";
 import { appendTurn } from "@/lib/notes";
+import { readJson, invalidJson } from "@/lib/http";
 
 const NOTES_DIR = process.env.GRAPHIFY_NOTES_DIR ?? "./data/notes";
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { conversationId?: string; role?: string; content?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ conversationId?: string; role?: string; content?: string }>(request);
+  if (!body) return invalidJson();
   const { conversationId, role, content } = body;
   if (!conversationId || !role || !content) {
     return Response.json({ error: "conversationId, role, content required" }, { status: 400 });

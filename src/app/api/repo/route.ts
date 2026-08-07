@@ -1,16 +1,13 @@
 import { getRepo, setRepoPath, cloneRepo } from "@/lib/repo";
+import { readJson, invalidJson } from "@/lib/http";
 
 export async function GET(): Promise<Response> {
   return Response.json(getRepo());
 }
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { path?: string; url?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ path?: string; url?: string }>(request);
+  if (!body) return invalidJson();
   try {
     if (body.url) return Response.json(await cloneRepo(body.url));
     if (body.path) return Response.json(setRepoPath(body.path));

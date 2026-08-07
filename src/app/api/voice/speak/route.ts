@@ -1,14 +1,11 @@
 import { synthesize } from "@/lib/voice";
+import { readJson } from "@/lib/http";
 
 // Assistant text → spoken WAV (piper, offline). The browser plays the bytes
 // straight from an <audio> element, so JARVIS talks back.
 export async function POST(request: Request): Promise<Response> {
-  let body: { text?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "expected JSON body" }, { status: 400 });
-  }
+  const body = await readJson<{ text?: string }>(request);
+  if (!body) return Response.json({ error: "expected JSON body" }, { status: 400 });
 
   const text = (body.text ?? "").trim();
   if (!text) return Response.json({ error: "no text" }, { status: 400 });

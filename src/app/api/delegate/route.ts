@@ -1,14 +1,9 @@
 import { spawn } from "node:child_process";
 import { getRepo } from "@/lib/repo";
-import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
+import { runCliAgent } from "@/lib/cliAgent";
+import { CLI_ROSTER } from "@/lib/roster";
 import { timedRun, newBatchId } from "@/lib/runs";
-
-// Gemini excluded — Google retired the free Gemini Code Assist CLI tier.
-const AGENTS: { id: string; name: string; backend: CliBackend }[] = [
-  { id: "claude", name: "Claude", backend: "claude" },
-  { id: "codex", name: "Codex", backend: "codex" },
-  { id: "openclaw", name: "OpenClaw", backend: "opencode" },
-];
+import { readJson, invalidJson } from "@/lib/http";
 
 // Register the task on the Hermes kanban so it's tracked/visible. Best-effort:
 // if hermes isn't around, we still gather proposals.
@@ -30,12 +25,8 @@ function createKanbanTask(title: string): Promise<string | null> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { task?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ task?: string }>(request);
+  if (!body) return invalidJson();
   const task = body.task?.trim();
   if (!task) return Response.json({ error: "task required" }, { status: 400 });
 
@@ -52,7 +43,7 @@ to this codebase. Do not modify anything — propose only.`;
 
   const batchId = newBatchId();
   const proposals = await Promise.all(
-    AGENTS.map(async (a) => {
+    CLI_ROSTER.map(async (a) => {
       try {
         const answer = await timedRun(
           { feature: "delegate", agent: a.name, backend: a.backend, task: task.slice(0, 140), repo: repoPath, batchId },

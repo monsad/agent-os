@@ -1,33 +1,24 @@
 import { getRepo } from "@/lib/repo";
-import { runCliAgent, type CliBackend } from "@/lib/cliAgent";
+import { runCliAgent } from "@/lib/cliAgent";
+import { selectAgents } from "@/lib/roster";
 import { createWorktree, diffWorktree, removeWorktree } from "@/lib/worktree";
 import { timedRun, newBatchId } from "@/lib/runs";
 import { saveBatch, type Variant } from "@/lib/variantRuns";
-
-// Gemini excluded — Google retired the free Gemini Code Assist CLI tier.
-const AGENTS: { id: string; name: string; backend: CliBackend }[] = [
-  { id: "claude", name: "Claude", backend: "claude" },
-  { id: "codex", name: "Codex", backend: "codex" },
-  { id: "openclaw", name: "OpenClaw", backend: "opencode" },
-];
+import { readJson, invalidJson } from "@/lib/http";
 
 // Runs a task ×N in isolated git worktrees (one per agent) so write-mode
 // agents never collide on the same files, then returns each agent's diff
 // for review. Nothing lands in the repo until POST /api/variants/apply.
 export async function POST(request: Request): Promise<Response> {
-  let body: { task?: string; agents?: string[] };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ task?: string; agents?: string[] }>(request);
+  if (!body) return invalidJson();
   const task = body.task?.trim();
   if (!task) return Response.json({ error: "task required" }, { status: 400 });
 
   const repoPath = getRepo().repoPath;
   if (!repoPath) return Response.json({ error: "no_repo" }, { status: 400 });
 
-  const selected = body.agents?.length ? AGENTS.filter((a) => body.agents!.includes(a.id)) : AGENTS;
+  const selected = selectAgents(body.agents);
   const batchId = newBatchId();
   const prompt = `Task: ${task}
 

@@ -1,6 +1,7 @@
 import { getStore } from "@/lib/ghost";
 import { currentUserId } from "@/lib/auth";
 import { suggestPriority } from "@/lib/priority";
+import { readJson, invalidJson } from "@/lib/http";
 
 export async function GET(request: Request): Promise<Response> {
   const userId = await currentUserId(request);
@@ -16,12 +17,8 @@ export async function POST(request: Request): Promise<Response> {
   const userId = await currentUserId(request);
   if (userId === null) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  let body: { title?: string; description?: string; deadline?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ title?: string; description?: string; deadline?: string }>(request);
+  if (!body) return invalidJson();
   const title = body.title?.trim();
   if (!title) return Response.json({ error: "title required" }, { status: 400 });
 
@@ -44,12 +41,8 @@ export async function PATCH(request: Request): Promise<Response> {
   const userId = await currentUserId(request);
   if (userId === null) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  let body: { id?: number; title?: string; status?: string; priority?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ id?: number; title?: string; status?: string; priority?: string }>(request);
+  if (!body) return invalidJson();
   if (typeof body.id !== "number") return Response.json({ error: "id required" }, { status: 400 });
   try {
     const goal = await getStore().updateGoal(userId, body.id, {
@@ -68,12 +61,8 @@ export async function DELETE(request: Request): Promise<Response> {
   const userId = await currentUserId(request);
   if (userId === null) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  let body: { id?: number };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ id?: number }>(request);
+  if (!body) return invalidJson();
   if (typeof body.id !== "number") return Response.json({ error: "id required" }, { status: 400 });
   try {
     const ok = await getStore().deleteGoal(userId, body.id);
