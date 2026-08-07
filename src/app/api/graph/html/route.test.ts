@@ -24,4 +24,13 @@ describe("GET /api/graph/html", () => {
     const res = await GET();
     expect(res.status).toBe(404);
   });
+
+  // graphify writes graphify-out/ next to the notes, not at cwd — reading from
+  // cwd meant the UI never found a graph even when one had just been built.
+  it("reads graph.html from inside the notes directory", async () => {
+    (readFile as unknown as ReturnType<typeof vi.fn>).mockResolvedValue("<html>graph</html>");
+    await GET();
+    const [readPath] = (readFile as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
+    expect(readPath).toContain("data/notes/graphify-out/graph.html");
+  });
 });
