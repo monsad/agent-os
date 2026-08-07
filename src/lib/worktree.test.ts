@@ -100,31 +100,33 @@ describe("removeWorktree", () => {
 });
 
 describe("diffWorktree", () => {
-  it("runs git diff HEAD inside the worktree path", async () => {
-    const spawn = fakeSpawn("diff --git a/x b/x\n+hello\n");
+  it("intent-to-adds untracked files first, then diffs against HEAD", async () => {
+    const { spawn } = fakeSpawnSequence([{ stdout: "" }, { stdout: "diff --git a/x b/x\n+hello\n" }]);
     const out = await diffWorktree({ path: "/wt/x", branch: "agent-run/x", runId: "x" }, spawn as never);
     expect(out).toContain("+hello");
-    expect(spawn).toHaveBeenCalledWith("git", ["diff", "HEAD"], expect.objectContaining({ cwd: "/wt/x" }));
+    expect(spawn).toHaveBeenNthCalledWith(1, "git", ["add", "-A", "-N"], expect.objectContaining({ cwd: "/wt/x" }));
+    expect(spawn).toHaveBeenNthCalledWith(2, "git", ["diff", "HEAD"], expect.objectContaining({ cwd: "/wt/x" }));
   });
 });
 
 describe("applyWorktree", () => {
   it("pipes the worktree's diff to `git apply` in the main repo", async () => {
     const patch = "diff --git a/x b/x\n+hello\n";
-    const { spawn, stdin } = fakeSpawnSequence([{ stdout: patch }, { stdout: "" }]);
+    const { spawn, stdin } = fakeSpawnSequence([{ stdout: "" }, { stdout: patch }, { stdout: "" }]);
     await applyWorktree("/repos/my-app", { path: "/wt/x", branch: "agent-run/x", runId: "x" }, spawn as never);
 
-    expect(spawn).toHaveBeenNthCalledWith(1, "git", ["diff", "HEAD"], expect.objectContaining({ cwd: "/wt/x" }));
-    expect(spawn).toHaveBeenNthCalledWith(2, "git", ["apply"], expect.objectContaining({ cwd: "/repos/my-app" }));
+    expect(spawn).toHaveBeenNthCalledWith(1, "git", ["add", "-A", "-N"], expect.objectContaining({ cwd: "/wt/x" }));
+    expect(spawn).toHaveBeenNthCalledWith(2, "git", ["diff", "HEAD"], expect.objectContaining({ cwd: "/wt/x" }));
+    expect(spawn).toHaveBeenNthCalledWith(3, "git", ["apply"], expect.objectContaining({ cwd: "/repos/my-app" }));
     expect(stdin()).toBe(patch);
   });
 
   it("rejects without calling git apply when the worktree has no changes", async () => {
-    const { spawn } = fakeSpawnSequence([{ stdout: "" }]);
+    const { spawn } = fakeSpawnSequence([{ stdout: "" }, { stdout: "" }]);
     await expect(
       applyWorktree("/repos/my-app", { path: "/wt/x", branch: "agent-run/x", runId: "x" }, spawn as never),
     ).rejects.toThrow(/no changes to apply/);
-    expect(spawn).toHaveBeenCalledTimes(1);
+    expect(spawn).toHaveBeenCalledTimes(2);
   });
 });
 
