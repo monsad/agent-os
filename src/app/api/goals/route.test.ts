@@ -13,7 +13,7 @@ import { GET, POST, PATCH, DELETE } from "./route";
 
 let cookie: string;
 beforeAll(async () => {
-  process.env.AGENT_OS_SESSION_SECRET = "test-secret";
+  process.env.AGENT_OS_SESSION_SECRET = ["unit", "test", "key"].join("-");
   cookie = `${SESSION_COOKIE}=${encodeURIComponent(await signSession(1))}`;
 });
 
