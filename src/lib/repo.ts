@@ -14,10 +14,39 @@ export function getRepo(): Workspace {
   }
 }
 
+const DATA_DIR = path.join(process.cwd(), "data");
+
+function isInside(child: string, parent: string): boolean {
+  const rel = path.relative(parent, child);
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+/**
+ * Whether the app is allowed to attach this directory.
+ *
+ * Attaching a directory points file-reading agents at it, so "any path the
+ * process can stat" is too much: ~/.ssh or ~/Documents would be readable, and
+ * the agent would happily quote what it found back into an answer. Requiring a
+ * git repo covers the real use case while excluding those, and the app's own
+ * data/ dir stays allowed for uploads (data/context) and clones (data/repos).
+ */
+export function isAllowedRepoPath(resolved: string): boolean {
+  if (isInside(resolved, DATA_DIR)) return true;
+  return existsSync(path.join(resolved, ".git"));
+}
+
 export function setRepoPath(repoPath: string): Workspace {
-  const resolved = repoPath.replace(/^~/, process.env.HOME ?? "~");
-  if (!existsSync(resolved) || !statSync(resolved).isDirectory()) {
-    throw new Error(`not a directory: ${resolved}`);
+  const expanded = repoPath.replace(/^~/, process.env.HOME ?? "~");
+  if (!existsSync(expanded) || !statSync(expanded).isDirectory()) {
+    throw new Error(`not a directory: ${expanded}`);
+  }
+  // Resolve before checking so ".." and symlink tricks can't walk out of data/.
+  const resolved = path.resolve(expanded);
+  if (!isAllowedRepoPath(resolved)) {
+    throw new Error(
+      `refusing to attach ${resolved}: not a git repository. Agents read whatever ` +
+        `directory is attached, so only git repos (or the app's own data/ dir) are allowed.`,
+    );
   }
   const ws: Workspace = { repoPath: resolved };
   mkdirSync(path.dirname(STORE), { recursive: true });
