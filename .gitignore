@@ -1,7 +1,6 @@
 node_modules/
 .next/
 out/
-data/notes/
 graphify-out/
 .env.local
 coverage/
@@ -17,3 +16,5 @@ data/brain/
 data/runs.jsonl
 .env
 **/.env
+.opencode
+data/worktrees/
