@@ -8,6 +8,7 @@ import { ContextRail } from "./ContextRail/ContextRail";
 import { CouncilView } from "./CouncilView";
 import { ReviewView } from "./ReviewView";
 import { DelegateView } from "./DelegateView";
+import { VariantsView } from "./VariantsView";
 import { BrainView } from "./BrainView";
 import { ObservabilityView } from "./ObservabilityView";
 import { AGENTS, type Agent } from "./agents";
@@ -61,6 +62,8 @@ export function MissionControlLayout() {
           {view === "council" && <CouncilView />}
 
           {view === "delegate" && <DelegateView />}
+
+          {view === "variants" && <VariantsView />}
 
           {view === "review" && <ReviewView />}
 
