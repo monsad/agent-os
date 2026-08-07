@@ -1,4 +1,5 @@
 import { spawn as nodeSpawn, type SpawnOptions } from "node:child_process";
+import path from "node:path";
 
 type SpawnFn = typeof nodeSpawn;
 
@@ -31,9 +32,24 @@ const BACKEND = process.env.GRAPHIFY_BACKEND ?? "ollama";
 const MODEL = process.env.GRAPHIFY_MODEL ?? "qwen2.5:14b";
 const llmArgs = ["--backend", BACKEND, "--model", MODEL, "--max-concurrency", "1"];
 
+// graphify-out/ is written next to the notes, not at cwd — everything that
+// reads the built graph must go through this.
+export function graphOutDir(notesDir: string): string {
+  return path.join(path.resolve(notesDir), "graphify-out");
+}
+
+export function graphHtmlPath(notesDir: string): string {
+  return path.join(graphOutDir(notesDir), "graph.html");
+}
+
+// Two passes, both required: `--update` extracts entities into graph.json, then
+// `cluster-only` names the communities and renders graph.html. There is no
+// `--html` flag (only `--no-viz` to opt out of the render), so the previous
+// version suppressed the visualisation on pass 1 and then hung forever on an
+// unknown flag on pass 2 — graph.html never appeared and the request timed out.
 export async function rebuild(notesDir: string, spawn: SpawnFn = nodeSpawn): Promise<void> {
-  await run(spawn, [notesDir, "--update", "--no-viz", ...llmArgs]);
-  await run(spawn, [notesDir, "--html", ...llmArgs]);
+  await run(spawn, [notesDir, "--update", ...llmArgs]);
+  await run(spawn, ["cluster-only", notesDir, "--backend", BACKEND, "--model", MODEL]);
 }
 
 // notesDir is accepted for a consistent call signature with rebuild() and a future
