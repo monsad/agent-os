@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { readJson, invalidJson } from "@/lib/http";
 
 function run(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -19,12 +20,8 @@ function stripAnsi(s: string): string {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { skill?: string; prompt?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ skill?: string; prompt?: string }>(request);
+  if (!body) return invalidJson();
   const skill = body.skill?.trim();
   const prompt = body.prompt?.trim();
   if (!skill || !prompt) return Response.json({ error: "skill and prompt required" }, { status: 400 });

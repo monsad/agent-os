@@ -1,13 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
+import { CLI_ROSTER } from "@/lib/roster";
 
 type Variant = { id: string; name: string; ok: boolean; diff: string; error?: string };
 
-const AGENT_OPTIONS = [
-  { id: "claude", label: "Claude" },
-  { id: "codex", label: "Codex" },
-  { id: "openclaw", label: "OpenClaw" },
-];
+// Derived, not restated: the checkboxes offer exactly the agents the API will
+// actually run, so the two can't drift apart.
+const AGENT_OPTIONS = CLI_ROSTER.map((a) => ({ id: a.id, label: a.name }));
 
 function DiffLine({ line }: { line: string }) {
   const color =

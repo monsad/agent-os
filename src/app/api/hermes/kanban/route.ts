@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { readJson, invalidJson } from "@/lib/http";
 
 function run(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -32,12 +33,8 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { action?: string; title?: string; id?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ action?: string; title?: string; id?: string }>(request);
+  if (!body) return invalidJson();
   try {
     if (body.action === "create" && body.title?.trim()) {
       await run(["create", body.title.trim(), "--json"]);

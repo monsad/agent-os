@@ -1,15 +1,12 @@
 import { getStore } from "@/lib/ghost";
 import { query as graphifyQuery } from "@/lib/graphify";
+import { readJson, invalidJson } from "@/lib/http";
 
 const NOTES_DIR = process.env.GRAPHIFY_NOTES_DIR ?? "./data/notes";
 
 export async function POST(request: Request): Promise<Response> {
-  let body: { q?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "invalid json" }, { status: 400 });
-  }
+  const body = await readJson<{ q?: string }>(request);
+  if (!body) return invalidJson();
   const q = body.q?.trim();
   if (!q) return Response.json({ error: "q required" }, { status: 400 });
 

@@ -1,16 +1,13 @@
 import { BRAIN_DIR, initBrain, brainStatus } from "@/lib/brain";
 import { runClaude } from "@/lib/cliAgent";
+import { readJson } from "@/lib/http";
 
 // Ask the second brain a question. Read-only by design: the answer may come
 // ONLY from what the brain already holds (atoms/threads), never from the
 // model's own knowledge — the recall mirror of the night-shift refiner.
 export async function POST(request: Request): Promise<Response> {
-  let body: { question?: string };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "expected JSON body" }, { status: 400 });
-  }
+  const body = await readJson<{ question?: string }>(request);
+  if (!body) return Response.json({ error: "expected JSON body" }, { status: 400 });
   const question = (body.question ?? "").trim();
   if (!question) return Response.json({ error: "no question" }, { status: 400 });
 
