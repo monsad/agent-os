@@ -22,12 +22,27 @@ orchestrates processes and repositories on the host, so a cloud deploy is out of
 
 ## Access control
 
-Per-user auth. Users register / log in at `/login` (`/api/auth/register` · `login` ·
-`logout`). Passwords are salted-`scrypt` hashed (`lib/password.ts`, Node-only). On
-success a signed session cookie (`<userId>.<HMAC-SHA256>`, `lib/auth.ts`) is issued.
+Single-operator. The login gates *this instance*; it is **not** multi-tenant isolation.
+Only goals are scoped per user — conversations, notes, the second brain, the attached
+repo and variant runs are global to the instance, so any account that can log in can
+read and act on all of them. Do not share an instance between people (see README).
+
+Users register / log in at `/login` (`/api/auth/register` · `login` · `logout`).
+Passwords are salted-`scrypt` hashed (`lib/password.ts`, Node-only). On success a
+signed session cookie (`<userId>.<issuedAt>.<HMAC-SHA256>`, `lib/auth.ts`) is issued.
 `src/middleware.ts` verifies that signature on every page and API route — edge-safe via
 Web Crypto, no DB lookup — redirecting browsers to `/login` and returning `401` to APIs.
-Goals are scoped to the session user, so each user only ever sees their own resources.
+
+Enforced in code:
+
+- `AGENT_OS_SESSION_SECRET` is required; there is no fallback, so the app refuses to
+  sign or verify rather than accept forgeable sessions.
+- The signature covers the issue time, so sessions genuinely expire after 7 days
+  instead of relying on the cookie's client-side `Max-Age`.
+- Registration closes after the first account (`AGENT_OS_ALLOW_REGISTRATION=true`
+  overrides); login is rate limited per client address and per username.
+- `/api/repo` accepts only git repositories and the app's own `data/` dir, since
+  attaching a directory is what file-reading agents are then pointed at.
 
 ## Configuration (`.env`)
 
