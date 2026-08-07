@@ -34,17 +34,34 @@ fallback is a publicly known development value and anyone can forge a session wi
 
 ## Prerequisites
 - Node 18+
-- Ollama running with `gpt-oss:20b` pulled (`ollama pull gpt-oss:20b && ollama serve`)
-- `graphifyy` installed (`uv tool install graphifyy` or `pip install graphifyy`)
-- A Ghost (ghost.build) Postgres connection string
+- Docker (for the Postgres store — or bring your own Postgres and skip it)
+- Ollama running with a model pulled (`ollama pull qwen2.5:14b && ollama serve`)
+- `graphify` installed (`uv tool install graphify` or `pip install graphify`)
+- Whichever agent CLIs you want to use, already logged in: `claude`, `codex`, `opencode`
 
 ## Setup
+
 ```bash
-cp .env.example .env.local   # fill in GHOST_DATABASE_URL
+cp .env.example .env.local
+docker compose up -d          # Postgres on :5439, schema created automatically
 npm install
-npm run db:init              # create tables in Ghost
-npm run dev                  # http://localhost:3000
+npm run dev                   # http://localhost:3000
 ```
+
+Then edit `.env.local`:
+
+```bash
+GHOST_DATABASE_URL=postgres://postgres:agentos@localhost:5439/agentos
+AGENT_OS_SESSION_SECRET=<long random string>
+GRAPHIFY_NOTES_DIR=/absolute/path/outside/this/repo
+```
+
+Only the database is containerised. The app runs on the host on purpose — it
+drives your local agent CLIs under your own logins, your Ollama, and your git
+repos. Those are host binaries and host credentials, so a Linux container
+can't run them.
+
+To reset the store completely: `docker compose down -v` (drops the volume).
 
 ## Memory graph
 Chat turns are saved to `data/notes/*.md`. Click **Rebuild** in the Knowledge graph panel
