@@ -1,14 +1,28 @@
 // Per-user session for Agent OS. Edge-safe: uses only Web Crypto + process.env,
 // so it runs in Next.js middleware as well as Node route handlers.
 //
-// A session cookie is "<userId>.<hmac>" where hmac = HMAC-SHA256(userId, secret).
-// The signature ties the cookie to a real user id and cannot be forged without
-// the secret, so middleware can authenticate statelessly (no DB lookup).
+// A session cookie is "<userId>.<issuedAt>.<hmac>", where the hmac covers
+// "<userId>.<issuedAt>". Signing the timestamp is what makes the lifetime real:
+// a cookie's own Max-Age is only advice the client may ignore, so without it a
+// stolen cookie stays valid forever.
 
 export const SESSION_COOKIE = "agentos_session";
 
+/** How long a signed session stays valid. Mirrors the cookie's Max-Age. */
+export const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Deliberately no fallback. A shipped default is a publicly known key — anyone
+// could mint a valid cookie for any user id. Failing closed turns that into a
+// loud startup error instead of a silent, total authentication bypass.
 function sessionSecret(): string {
-  return process.env.AGENT_OS_SESSION_SECRET || "dev-insecure-secret-change-me";
+  const secret = process.env.AGENT_OS_SESSION_SECRET;
+  if (!secret) {
+    throw new Error(
+      "AGENT_OS_SESSION_SECRET is not set. Generate one (`openssl rand -hex 32`) and " +
+        "put it in .env.local — sessions cannot be signed safely without it.",
+    );
+  }
+  return secret;
 }
 
 function b64url(bytes: Uint8Array): string {
@@ -38,22 +52,39 @@ export function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export async function signSession(userId: number): Promise<string> {
-  const sig = await hmac(String(userId), sessionSecret());
-  return `${userId}.${sig}`;
+export async function signSession(userId: number, now: number = Date.now()): Promise<string> {
+  const payload = `${userId}.${now}`;
+  return `${payload}.${await hmac(payload, sessionSecret())}`;
 }
 
-/** Returns the user id if the cookie is a valid, untampered session, else null. */
-export async function verifySession(token: string | undefined): Promise<number | null> {
+/**
+ * Returns the user id if the cookie is a valid, untampered, unexpired session,
+ * else null. The signature is checked before the age, so an expired token still
+ * has to be authentic to be distinguished from a forged one.
+ */
+export async function verifySession(
+  token: string | undefined,
+  now: number = Date.now(),
+): Promise<number | null> {
   if (!token) return null;
-  const dot = token.lastIndexOf(".");
-  if (dot <= 0) return null;
-  const idStr = token.slice(0, dot);
-  const sig = token.slice(dot + 1);
-  const expected = await hmac(idStr, sessionSecret());
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [idStr, issuedAtStr, sig] = parts;
+
+  const expected = await hmac(`${idStr}.${issuedAtStr}`, sessionSecret());
   if (!safeEqual(sig, expected)) return null;
+
   const id = Number(idStr);
-  return Number.isInteger(id) && id > 0 ? id : null;
+  const issuedAt = Number(issuedAtStr);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  if (!Number.isFinite(issuedAt)) return null;
+
+  const age = now - issuedAt;
+  // Reject clock-skewed futures too: a token issued "later than now" would
+  // otherwise outlive the window.
+  if (age < 0 || age > SESSION_MAX_AGE_MS) return null;
+
+  return id;
 }
 
 /** Cookie header value for a freshly issued session (7-day, HttpOnly, Lax). */
