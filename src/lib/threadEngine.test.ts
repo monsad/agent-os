@@ -75,6 +75,28 @@ describe("runThread", () => {
     expect(written[0].body).toContain("claude exited 1");
   });
 
+  // Observed live: the Codex CLI echoes its whole prompt when it exits non-zero,
+  // so an unbounded error body writes the transcript back into the transcript and
+  // the next failure echoes that — 2,720 chars at hop 1, 5,449 at hop 2.
+  it("truncates a failure message so it cannot compound across hops", async () => {
+    const { deps: d, written } = deps(
+      {},
+      { runTurn: vi.fn(async () => { throw new Error("x".repeat(10_000)); }) },
+    );
+    await runThread([{ agentId: "claude", hop: 1, mode: "discuss" }], d);
+    expect(written[0].body.length).toBeLessThan(400);
+    expect(written[0].body).toContain("[truncated]");
+  });
+
+  it("leaves a short failure message intact", async () => {
+    const { deps: d, written } = deps(
+      {},
+      { runTurn: vi.fn(async () => { throw new Error("codex exited 1"); }) },
+    );
+    await runThread([{ agentId: "claude", hop: 1, mode: "discuss" }], d);
+    expect(written[0].body).toBe("codex exited 1");
+  });
+
   it("passes the turn mode through to the runner", async () => {
     const { deps: d } = deps({ claude: "ok" });
     await runThread([{ agentId: "claude", hop: 1, mode: "discuss" }], d);

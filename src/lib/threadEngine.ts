@@ -33,6 +33,22 @@ export type EngineDeps = {
  */
 export const MAX_HOPS = 5;
 
+/**
+ * Ceiling on a stored failure message.
+ *
+ * A failed turn becomes a message, and every message is replayed into every
+ * later prompt — so an unbounded error body compounds. A CLI that echoes its
+ * prompt on failure writes the transcript back into the transcript, and the
+ * next failure echoes that. Measured on a live run: 2,720 characters at hop 1,
+ * 5,449 at hop 2, doubling each time.
+ */
+const MAX_FAILURE_CHARS = 300;
+
+function failureNote(e: unknown): string {
+  const msg = e instanceof Error ? e.message : "failed";
+  return msg.length > MAX_FAILURE_CHARS ? `${msg.slice(0, MAX_FAILURE_CHARS)}… [truncated]` : msg;
+}
+
 export async function runThread(seed: ThreadTurn[], deps: EngineDeps): Promise<void> {
   const queue: ThreadTurn[] = [...seed];
   let taken = 0;
@@ -57,7 +73,7 @@ export async function runThread(seed: ThreadTurn[], deps: EngineDeps): Promise<v
     } catch (e) {
       // A failed turn is part of the conversation, not the end of it: the next
       // agent can see that this one was unavailable.
-      body = e instanceof Error ? e.message : "failed";
+      body = failureNote(e);
     }
 
     await deps.appendMessage({ author: agent.id, body, mentions, hop: turn.hop });
