@@ -138,18 +138,36 @@ operator would mean guessing, and a thread that silently runs the wrong agent is
 worse than one that refuses to start.
 
 ```
-queue ← speakers mentioned in the human's opening message
+queue ← speakers mentioned in the human's opening message, each with a turn mode
 while queue is not empty and hop < MAX_HOPS:
-    speaker ← queue.shift()
-    prompt  ← system preamble + full transcript so far
-    reply   ← run speaker read-only, inside timedRun
+    speaker, mode ← queue.shift()
+    prompt        ← system preamble + full transcript so far
+    reply         ← run speaker in `mode`, inside timedRun
     persist reply with hop = current hop
-    queue  ← queue + (mentions in reply, resolved against the roster)
+    queue         ← queue + (mentions in reply, resolved against the roster)
     if the thread was stopped: break
 ```
 
 Termination is therefore either: nobody mentioned anyone (the natural end), the
 cap was hit, or the operator pressed Stop.
+
+### Turn mode is a parameter, not a literal
+
+Every turn carries a **mode**. In this block there is exactly one value,
+`"discuss"`, which runs the agent read-only — so the observable behaviour is
+identical to hard-coding it.
+
+It is a parameter anyway, because it is the one decision here that later blocks
+cannot route around. Block 2 introduces a writing turn, which is not a different
+prompt or a different agent but a different *way of running the same turn*: in a
+git worktree, with writes allowed. If `readOnly: true` were a literal inside the
+loop, adding that would mean changing the engine's signature and every test that
+exercises it.
+
+A discriminator column can be added to a table later with one `alter table`. A
+parameter threaded through a loop and its call sites cannot be retrofitted as
+cheaply. That asymmetry is the whole reason this one is decided now and the
+others are not.
 
 ### Prompt shape
 
@@ -203,7 +221,8 @@ works in its own git worktree and the operator picks the winner.
 
 This is narrower than Buzz, which lets agents execute approved automations.
 Block 2 is where that gap closes, on top of the worktree isolation that already
-exists.
+exists — which is why the turn mode above is a parameter with one value rather
+than a hard-coded flag.
 
 ### Polling, not streaming
 
