@@ -78,3 +78,59 @@ describe("ghost store", () => {
     expect(params).toEqual(["alice"]);
   });
 });
+
+describe("threads", () => {
+  it("initSchema creates both thread tables", async () => {
+    const pool = fakePool();
+    const store = createStore(pool as never);
+    await store.initSchema();
+    const sql = pool.query.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(sql).toMatch(/create table if not exists threads/i);
+    expect(sql).toMatch(/create table if not exists thread_messages/i);
+  });
+
+  it("createThread binds the title rather than interpolating it", async () => {
+    const pool = fakePool([{ id: 7 }]);
+    const store = createStore(pool as never);
+    await store.createThread(1, "o'brien's idea", "/repos/app");
+    const [sql, params] = pool.query.mock.calls.at(-1)!;
+    expect(String(sql)).not.toContain("o'brien");
+    expect(params).toEqual([1, "o'brien's idea", "/repos/app"]);
+  });
+
+  it("addThreadMessage stores mentions and hop", async () => {
+    const pool = fakePool([{ id: 3 }]);
+    const store = createStore(pool as never);
+    await store.addThreadMessage(7, { author: "claude", body: "ask @codex", mentions: ["codex"], hop: 1 });
+    const [sql, params] = pool.query.mock.calls.at(-1)!;
+    expect(String(sql)).toMatch(/insert into thread_messages/i);
+    expect(params).toEqual([7, "claude", "ask @codex", ["codex"], 1]);
+  });
+
+  it("getThread scopes the lookup to the owner", async () => {
+    const pool = fakePool([]);
+    const store = createStore(pool as never);
+    await store.getThread(1, 7);
+    const [sql, params] = pool.query.mock.calls.at(-1)!;
+    expect(String(sql)).toMatch(/user_id = \$1/);
+    expect(params).toEqual([1, 7]);
+  });
+
+  it("getThreadById does not scope by owner, for the loop's own bookkeeping", async () => {
+    const pool = fakePool([]);
+    const store = createStore(pool as never);
+    await store.getThreadById(7);
+    const [sql, params] = pool.query.mock.calls.at(-1)!;
+    expect(String(sql)).not.toMatch(/user_id = /);
+    expect(params).toEqual([7]);
+  });
+
+  it("hasRunningThread asks only for this operator's running threads", async () => {
+    const pool = fakePool([{ id: 2 }]);
+    const store = createStore(pool as never);
+    expect(await store.hasRunningThread(1)).toBe(true);
+    const [sql, params] = pool.query.mock.calls.at(-1)!;
+    expect(String(sql)).toMatch(/status = 'running'/);
+    expect(params).toEqual([1]);
+  });
+});

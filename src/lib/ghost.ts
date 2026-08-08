@@ -7,6 +7,27 @@ export type JournalEntry = { id: number; conversation_id: string; summary: strin
 export type Goal = { id: number; user_id: number; title: string; status: string; priority: string; created_at: string };
 export type User = { id: number; username: string; password_hash: string; created_at: string };
 
+export type ThreadStatus = "idle" | "running" | "stopped";
+
+export type Thread = {
+  id: number;
+  user_id: number;
+  title: string;
+  repo_path: string | null;
+  status: ThreadStatus;
+  created_at: string;
+};
+
+export type ThreadMessage = {
+  id: number;
+  thread_id: number;
+  author: string; // 'human' or a CLI_ROSTER id
+  body: string;
+  mentions: string[];
+  hop: number;
+  created_at: string;
+};
+
 export function createStore(pool: QueryablePool) {
   return {
     async initSchema(): Promise<void> {
@@ -50,6 +71,25 @@ export function createStore(pool: QueryablePool) {
         summary text not null,
         created_at timestamptz default now()
       )`);
+      await pool.query(`create table if not exists threads (
+        id bigserial primary key,
+        user_id bigint not null references users(id),
+        title text not null,
+        repo_path text,
+        status text not null default 'idle',
+        created_at timestamptz default now()
+      )`);
+      await pool.query(`create table if not exists thread_messages (
+        id bigserial primary key,
+        thread_id bigint not null references threads(id) on delete cascade,
+        author text not null,
+        body text not null,
+        mentions text[] not null default '{}',
+        hop int not null default 0,
+        created_at timestamptz default now()
+      )`);
+      await pool.query(`create index if not exists thread_messages_thread_idx
+        on thread_messages (thread_id, id)`);
     },
 
     async createUser(username: string, passwordHash: string): Promise<User> {
@@ -145,6 +185,78 @@ export function createStore(pool: QueryablePool) {
         [`%${term}%`, limit],
       );
       return rows as { conversation_id: string; content: string }[];
+    },
+
+    async createThread(userId: number, title: string, repoPath: string | null): Promise<Thread> {
+      const { rows } = await pool.query(
+        `insert into threads (user_id, title, repo_path) values ($1, $2, $3)
+         returning id, user_id, title, repo_path, status, created_at`,
+        [userId, title, repoPath],
+      );
+      return rows[0] as Thread;
+    },
+
+    async listThreads(userId: number): Promise<Thread[]> {
+      const { rows } = await pool.query(
+        `select id, user_id, title, repo_path, status, created_at
+           from threads where user_id = $1 order by id desc limit 50`,
+        [userId],
+      );
+      return rows as Thread[];
+    },
+
+    async getThread(userId: number, threadId: number): Promise<Thread | null> {
+      const { rows } = await pool.query(
+        `select id, user_id, title, repo_path, status, created_at
+           from threads where user_id = $1 and id = $2`,
+        [userId, threadId],
+      );
+      return (rows[0] as Thread) ?? null;
+    },
+
+    // Unscoped on purpose: the turn loop is doing bookkeeping on a thread it was
+    // already handed, not answering a request. Ownership is enforced by the
+    // routes, which all check getThread(userId, id) before anything reaches it.
+    async getThreadById(threadId: number): Promise<Thread | null> {
+      const { rows } = await pool.query(
+        `select id, user_id, title, repo_path, status, created_at from threads where id = $1`,
+        [threadId],
+      );
+      return (rows[0] as Thread) ?? null;
+    },
+
+    async setThreadStatus(threadId: number, status: ThreadStatus): Promise<void> {
+      await pool.query(`update threads set status = $2 where id = $1`, [threadId, status]);
+    },
+
+    async hasRunningThread(userId: number): Promise<boolean> {
+      const { rows } = await pool.query(
+        `select id from threads where user_id = $1 and status = 'running' limit 1`,
+        [userId],
+      );
+      return rows.length > 0;
+    },
+
+    async addThreadMessage(
+      threadId: number,
+      m: { author: string; body: string; mentions: string[]; hop: number },
+    ): Promise<ThreadMessage> {
+      const { rows } = await pool.query(
+        `insert into thread_messages (thread_id, author, body, mentions, hop)
+         values ($1, $2, $3, $4, $5)
+         returning id, thread_id, author, body, mentions, hop, created_at`,
+        [threadId, m.author, m.body, m.mentions, m.hop],
+      );
+      return rows[0] as ThreadMessage;
+    },
+
+    async listThreadMessages(threadId: number): Promise<ThreadMessage[]> {
+      const { rows } = await pool.query(
+        `select id, thread_id, author, body, mentions, hop, created_at
+           from thread_messages where thread_id = $1 order by id`,
+        [threadId],
+      );
+      return rows as ThreadMessage[];
     },
 
     async isAvailable(): Promise<boolean> {
