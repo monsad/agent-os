@@ -6,6 +6,7 @@ import { AgentCard } from "./AgentCard";
 import { AgentControlRoom } from "./AgentControlRoom";
 import { ContextRail } from "./ContextRail/ContextRail";
 import { CouncilView } from "./CouncilView";
+import ThreadsView from "./ThreadsView";
 import { ReviewView } from "./ReviewView";
 import { DelegateView } from "./DelegateView";
 import { VariantsView } from "./VariantsView";
@@ -60,6 +61,8 @@ export function MissionControlLayout() {
           )}
 
           {view === "council" && <CouncilView />}
+
+          {view === "threads" && <ThreadsView />}
 
           {view === "delegate" && <DelegateView />}
 

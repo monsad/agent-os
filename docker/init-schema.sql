@@ -41,3 +41,25 @@ create table if not exists journal_entries (
   summary text not null,
   created_at timestamptz default now()
 );
+
+create table if not exists threads (
+  id bigserial primary key,
+  user_id bigint not null references users(id),
+  title text not null,
+  repo_path text,
+  status text not null default 'idle',
+  created_at timestamptz default now()
+);
+
+create table if not exists thread_messages (
+  id bigserial primary key,
+  thread_id bigint not null references threads(id) on delete cascade,
+  author text not null,
+  body text not null,
+  mentions text[] not null default '{}',
+  hop int not null default 0,
+  created_at timestamptz default now()
+);
+
+create index if not exists thread_messages_thread_idx
+  on thread_messages (thread_id, id);
