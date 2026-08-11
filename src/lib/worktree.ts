@@ -1,4 +1,5 @@
 import { spawn as nodeSpawn } from "node:child_process";
+import { spawnEnv } from "./spawnEnv";
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -30,7 +31,7 @@ function runProcess(
   stdin?: string,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { cwd, stdio: [stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"] });
+    const proc = spawn(cmd, args, { cwd, env: spawnEnv(), stdio: [stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"] });
     let out = "";
     let err = "";
     let settled = false;
