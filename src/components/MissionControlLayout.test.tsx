@@ -16,6 +16,15 @@ describe("MissionControlLayout", () => {
     expect(screen.getByText(/click to open control room/i)).toBeInTheDocument();
   });
 
+  // The header used to be hard-coded, so switching view left the heading
+  // claiming "Mission Control" while a different page was on screen.
+  it("retitles the header when the workspace changes", () => {
+    render(<MissionControlLayout />);
+    fireEvent.click(screen.getByRole("button", { name: /Threads/ }));
+    expect(screen.getByRole("heading", { level: 1, name: "Threads" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Mission Control" })).not.toBeInTheDocument();
+  });
+
   it("opens the control room when an agent card is clicked", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ exists: false }), { status: 200 })));
     render(<MissionControlLayout />);
