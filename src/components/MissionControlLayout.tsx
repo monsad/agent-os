@@ -13,10 +13,12 @@ import { VariantsView } from "./VariantsView";
 import { BrainView } from "./BrainView";
 import { ObservabilityView } from "./ObservabilityView";
 import { AGENTS, type Agent } from "./agents";
+import { workspaceFor } from "./workspaces";
 
 export function MissionControlLayout() {
   const [selected, setSelected] = useState<Agent | null>(null);
   const [view, setView] = useState("mission-control");
+  const workspace = workspaceFor(view);
 
   return (
     <div className="flex h-screen">
@@ -27,10 +29,10 @@ export function MissionControlLayout() {
           <header className="mb-8 flex items-start justify-between">
             <div>
               <p className="eyebrow mb-3 flex items-center gap-2">
-                <span className="text-neutral-600">I</span> — Mission Control
+                <span className="text-neutral-600">{workspace.icon}</span> — {workspace.label}
               </p>
-              <h1 className="text-4xl font-semibold tracking-tight text-neutral-50">Mission Control</h1>
-              <p className="mt-2 text-sm text-neutral-400">Status of every agent, every memory, every signal.</p>
+              <h1 className="text-4xl font-semibold tracking-tight text-neutral-50">{workspace.label}</h1>
+              <p className="mt-2 text-sm text-neutral-400">{workspace.blurb}</p>
               <p className="mono mt-2 text-[11px] text-neutral-600">local · studio</p>
             </div>
             <div className="flex gap-2">

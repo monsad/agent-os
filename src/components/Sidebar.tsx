@@ -1,18 +1,7 @@
 "use client";
 import { AGENTS, STATUS_DOT, type Agent } from "./agents";
+import { WORKSPACES } from "./workspaces";
 
-const WORKSPACE = [
-  { id: "mission-control", label: "Mission Control", icon: "▦" },
-  { id: "council", label: "Broad Opinion", icon: "⚖" },
-  { id: "threads", label: "Threads", icon: "☰" },
-  { id: "delegate", label: "Delegate Task", icon: "⇶" },
-  { id: "variants", label: "Run Variants", icon: "⎇" },
-  { id: "review", label: "Code Review", icon: "✓" },
-  { id: "observability", label: "Observability", icon: "▤" },
-  { id: "brain", label: "Night Shift", icon: "☾" },
-  { id: "memory", label: "Memory", icon: "◍" },
-  { id: "graph", label: "Knowledge Graph", icon: "✸" },
-];
 
 export function Sidebar({
   active,
@@ -37,7 +26,7 @@ export function Sidebar({
       <div>
         <p className="eyebrow mb-2 px-2">Workspace</p>
         <div className="flex flex-col gap-0.5">
-          {WORKSPACE.map((w) => (
+          {WORKSPACES.map((w) => (
             <button
               key={w.id}
               onClick={() => onWorkspace(w.id)}
