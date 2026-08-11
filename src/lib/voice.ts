@@ -1,4 +1,5 @@
 import { spawn as nodeSpawn } from "node:child_process";
+import { spawnEnv } from "./spawnEnv";
 
 // Local voice I/O choke point — mirrors lib/cliAgent.ts. Every mic→text and
 // text→speech call shells out through here so binaries stay swappable + testable.
@@ -26,7 +27,7 @@ function runProcess(
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { stdio: [stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"] });
+    const proc = spawn(cmd, args, { env: spawnEnv(), stdio: [stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"] });
     const out: Buffer[] = [];
     let err = "";
     let settled = false;

@@ -1,4 +1,5 @@
 import { spawn as nodeSpawn } from "node:child_process";
+import { spawnEnv } from "./spawnEnv";
 import { existsSync, statSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -63,7 +64,7 @@ export function cloneRepo(url: string, spawn = nodeSpawn): Promise<Workspace> {
     const name = (url.split("/").pop() ?? "repo").replace(/\.git$/, "").replace(/[^a-zA-Z0-9_-]+/g, "-");
     const dest = path.join(process.cwd(), "data", "repos", name);
     mkdirSync(path.dirname(dest), { recursive: true });
-    const proc = spawn("git", ["clone", "--depth", "1", url, dest], { stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn("git", ["clone", "--depth", "1", url, dest], { env: spawnEnv(), stdio: ["ignore", "pipe", "pipe"] });
     let err = "";
     proc.stderr?.on("data", (d) => { err += d.toString(); });
     proc.on("error", (e) => reject(new Error(`git clone failed to start: ${e.message}`)));

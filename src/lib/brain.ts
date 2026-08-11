@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { spawnEnv } from "./spawnEnv";
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
@@ -37,7 +38,7 @@ You do not fill gaps with plausible-sounding information. Ever.
 
 function git(args: string[]): Promise<string> {
   return new Promise((resolve) => {
-    const proc = spawn("git", ["-C", BRAIN_DIR, ...args], { stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn("git", ["-C", BRAIN_DIR, ...args], { env: spawnEnv(), stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     proc.stdout?.on("data", (d) => { out += d.toString(); });
     proc.stderr?.on("data", (d) => { out += d.toString(); });

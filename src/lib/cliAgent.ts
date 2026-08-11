@@ -1,4 +1,5 @@
 import { spawn as nodeSpawn } from "node:child_process";
+import { spawnEnv } from "./spawnEnv";
 
 type SpawnFn = typeof nodeSpawn;
 export type CliBackend = "claude" | "codex" | "opencode" | "gemini";
@@ -17,7 +18,7 @@ function runProcess(
   return new Promise((resolve, reject) => {
     // stdin = "ignore" gives the child an immediate EOF; otherwise CLIs like
     // codex block forever waiting for piped input that never arrives.
-    const proc = spawn(cmd, args, { cwd, stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn(cmd, args, { cwd, env: spawnEnv(), stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
     let err = "";
     let settled = false;

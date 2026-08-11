@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { runThread, MAX_HOPS, type EngineDeps } from "./threadEngine";
+import { runThread, MAX_TURNS, type EngineDeps } from "./threadEngine";
 import type { ThreadMessage } from "./ghost";
 
 /** Deps wired to canned replies. Nothing spawns a process. */
@@ -32,10 +32,24 @@ describe("runThread", () => {
   });
 
   // The safety property. Every reply mentions someone, so only the cap ends it.
-  it("stops at the hop cap when agents keep handing off", async () => {
+  it("stops at the turn cap when agents keep handing off", async () => {
     const { deps: d, written } = deps({ claude: "@codex ?", codex: "@claude ?" });
     await runThread([{ agentId: "claude", hop: 1, mode: "discuss" }], d);
-    expect(written).toHaveLength(MAX_HOPS);
+    expect(written).toHaveLength(MAX_TURNS);
+  });
+
+  // The name change exists to make this case unambiguous: a branching reply
+  // spends the same budget as a back-and-forth, so the bound is on invocations,
+  // not on how deep the mention chain goes.
+  it("counts a branching reply against the same budget", async () => {
+    const { deps: d, written } = deps({
+      claude: "@codex @openclaw both of you",
+      codex: "@claude ?",
+      openclaw: "@claude ?",
+    });
+    await runThread([{ agentId: "claude", hop: 1, mode: "discuss" }], d);
+    expect(written).toHaveLength(MAX_TURNS);
+    expect(Math.max(...written.map((w) => w.hop))).toBeLessThan(MAX_TURNS);
   });
 
   it("ignores a mention of something that is not an agent", async () => {

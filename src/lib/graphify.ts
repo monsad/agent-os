@@ -1,11 +1,12 @@
 import { spawn as nodeSpawn, type SpawnOptions } from "node:child_process";
 import path from "node:path";
+import { spawnEnv } from "./spawnEnv";
 
 type SpawnFn = typeof nodeSpawn;
 
 function run(spawn: SpawnFn, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    const opts: SpawnOptions = { cwd: process.cwd() };
+    const opts: SpawnOptions = { cwd: process.cwd(), env: spawnEnv() };
     const proc = spawn("graphify", args, opts);
     let out = "";
     let err = "";
