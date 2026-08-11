@@ -99,9 +99,10 @@ create index if not exists thread_messages_thread_idx
   on thread_messages (thread_id, id);
 ```
 
-`hop` records how deep in a mention chain a message was produced. It is what
-enforces the depth cap, and it is stored rather than recomputed so the cap
-survives a server restart mid-thread.
+`hop` records how deep in a mention chain a message was produced. It is a
+provenance marker for reading the thread back, *not* the thing that bounds the
+run — the loop counts total turns taken, so a reply naming two agents spends two
+of the budget at the same depth.
 
 `repo_path` is captured per thread, so a thread stays pinned to the repository
 it was started against even if the operator attaches a different one later.
@@ -122,7 +123,7 @@ Each unit has one job and can be understood without reading the others.
 |---|---|---|
 | `src/lib/mentions.ts` | Parse `@name` out of text; resolve against the roster | `roster.ts` |
 | `src/lib/threads.ts` | CRUD for threads and messages | `ghost.ts` |
-| `src/lib/threadEngine.ts` | The turn loop: queue, depth cap, cancellation | injected runner |
+| `src/lib/threadEngine.ts` | The turn loop: queue, turn cap, cancellation | injected runner |
 | `src/app/api/threads/*` | Thin HTTP layer | the three above |
 | `src/components/ThreadsView.tsx` | UI | the API |
 
@@ -139,7 +140,7 @@ worse than one that refuses to start.
 
 ```
 queue ← speakers mentioned in the human's opening message, each with a turn mode
-while queue is not empty and hop < MAX_HOPS:
+while queue is not empty and turns_taken < MAX_TURNS:
     speaker, mode ← queue.shift()
     prompt        ← system preamble + full transcript so far
     reply         ← run speaker in `mode`, inside timedRun
@@ -189,9 +190,9 @@ The instruction is a request. The cap is the guarantee. See below.
 
 ## Three safeguards
 
-**Hard depth cap of 5 hops, enforced in the engine.** Not in the prompt. A
+**Hard cap of 5 agent turns per run, enforced in the engine.** Not in the prompt. A
 prompt asking an agent to stop after five turns is a request that a model may
-ignore; a counter in the loop is a property of the system. Every hop is a real
+ignore; a counter in the loop is a property of the system. Every turn is a real
 `claude -p` or `codex exec` invocation against the operator's own subscription,
 so an unbounded chain has a direct cost.
 
@@ -276,7 +277,7 @@ guards against is not occurring.
 `threadEngine` receives its runner as a parameter, so the loop is tested with a
 fake that returns canned replies. No process is spawned:
 
-- the depth cap holds when every reply mentions someone
+- the turn cap holds when every reply mentions someone
 - Stop halts the loop at the next hop boundary
 - an unknown mention is ignored rather than resolved
 - one agent failing records the failure and lets the thread continue

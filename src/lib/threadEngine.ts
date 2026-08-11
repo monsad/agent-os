@@ -26,12 +26,18 @@ export type EngineDeps = {
 /**
  * The hard bound on a single run of the loop.
  *
+ * This caps **total agent invocations per `runThread` call** — not turns per
+ * agent, and not depth of the mention chain. A reply naming two agents queues
+ * two turns, and both count against the same budget, so a fanning-out thread
+ * spends it faster than a back-and-forth one. It was called MAX_HOPS, which
+ * suggested a depth limit and was wrong about what is actually guaranteed.
+ *
  * Deliberately enforced here and not in the prompt: a prompt asking an agent to
  * stop after five turns is a request a model may ignore, while a counter in the
- * loop is a property of the system. Every hop is a real CLI invocation against
+ * loop is a property of the system. Every turn is a real CLI invocation against
  * the operator's own subscription.
  */
-export const MAX_HOPS = 5;
+export const MAX_TURNS = 5;
 
 /**
  * Ceiling on a stored failure message.
@@ -53,7 +59,7 @@ export async function runThread(seed: ThreadTurn[], deps: EngineDeps): Promise<v
   const queue: ThreadTurn[] = [...seed];
   let taken = 0;
 
-  while (queue.length > 0 && taken < MAX_HOPS) {
+  while (queue.length > 0 && taken < MAX_TURNS) {
     if (await deps.isStopped()) return;
 
     const turn = queue.shift()!;
