@@ -95,3 +95,7 @@ Run `npm run dev` and confirm:
 - With Ollama up: typing a message streams a reply; with Ollama down: amber banner shows.
 - After a few messages, **Rebuild** populates the graph iframe; the query box returns an answer.
 - Goals/Journal panels show "No … yet" when Ghost is empty, or rows after inserts.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
