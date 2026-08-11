@@ -27,3 +27,11 @@ context/
 
 # Local Claude Code config; not part of the project.
 .claude/
+
+# Installed by `npx impeccable install` into whichever harness directories it
+# finds. The .claude and .opencode copies are already covered above; these are
+# the same 3 MB of generated skills landing under .github, which is otherwise
+# tracked for CI. Only workflows and actions belong to this repo.
+.github/skills/
+.github/agents/
+.github/hooks/
